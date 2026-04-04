@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🌾 Моя Ферма | Вход и регистрация</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c2c 0%, #2a5a3a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .main-container {
+            max-width: 1200px;
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            animation: fadeInUp 0.6s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .info-panel {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        
+        .info-panel h1 {
+            color: #2e7d32;
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-panel .subtitle {
+            color: #666;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .bonus-box {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .bonus-box .bonus-amount {
+            font-size: 48px;
+            font-weight: bold;
+        }
+        
+        .bonus-box .bonus-label {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .feature-list {
+            margin: 20px 0;
+        }
+        
+        .feature-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .feature-icon {
+            font-size: 24px;
+            width: 40px;
+        }
+        
+        .feature-text {
+            flex: 1;
+        }
+        
+        .feature-title {
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .feature-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .economy-stats {
+            background: #e8f5e9;
+            border-radius: 15px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .economy-stats h4 {
+            color: #2e7d32;
+            margin-bottom: 10px;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            padding: 5px 0;
+        }
+        
+        .form-panel {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #666;
+            transition: all 0.3s;
+            border-radius: 10px 10px 0 0;
+        }
+        
+        .tab-btn.active {
+            color: #2e7d32;
+            background: #e8f5e9;
+            border-bottom: 3px solid #2e7d32;
+        }
+        
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        .input-wrapper {
+            position: relative;
+        }
+        
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 40px 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s;
+        }
+        
+        .input-wrapper input:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 0 3px rgba(76,175,80,0.1);
+        }
+        
+        .toggle-password {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            cursor: pointer;
+            font-size: 18px;
+            color: #999;
+        }
+        
+        .password-strength {
+            margin-top: 8px;
+            font-size: 12px;
+        }
+        
+        .strength-bar-container {
+            height: 4px;
+            background: #e0e0e0;
+            border-radius: 2px;
+            margin-top: 5px;
+            overflow: hidden;
+        }
+        
+        .strength-bar {
+            height: 100%;
+            width: 0%;
+            transition: width 0.3s ease;
+            border-radius: 2px;
+        }
+        
+        .strength-bar.weak { background: #f44336; width: 33%; }
+        .strength-bar.medium { background: #ff9800; width: 66%; }
+        .strength-bar.strong { background: #4caf50; width: 100%; }
+        
+        .rules {
+            background: #f5f5f5;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 11px;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        .referral-info {
+            background: #e3f2fd;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .referral-info .emoji {
+            font-size: 24px;
+        }
+        
+        button[type="submit"] {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(76,175,80,0.4);
+        }
+        
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+            max-width: 400px;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            animation: slideInRight 0.5s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+        }
+        
+        .alert-success { background: linear-gradient(135deg, #4caf50, #45a049); color: white; border-left: 5px solid #2e7d32; }
+        .alert-error { background: linear-gradient(135deg, #f44336, #da190b); color: white; border-left: 5px solid #8b0000; }
+        .alert-warning { background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border-left: 5px solid #e65100; }
+        .alert-info { background: linear-gradient(135deg, #2196f3, #1976d2); color: white; border-left: 5px solid #0d47a1; }
+        
+        .ad-wrapper {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 10px;
+            margin-top: 30px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .ad-wrapper iframe {
+                width: 100% !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div style="width: 100%; max-width: 1200px; margin: 0 auto;">
+        <div class="main-container">
+            <div class="info-panel">
+                <h1>
+                    <span>🌾</span> Моя Ферма
+                </h1>
+                <div class="subtitle">Экономическая игра с реальной ценностью</div>
+                
+                <div class="bonus-box">
+                    <div class="bonus-label">🎁 ПРИВЕТСТВЕННЫЙ БОНУС 🎁</div>
+                    <div class="bonus-amount">100 Coin</div>
+                    <div class="bonus-label">= 1 USDT на старт!</div>
+                </div>
+                
+                <div class="feature-list">
+                    <div class="feature-item">
+                        <div class="feature-icon">🌱</div>
+                        <div class="feature-text">
+                            <div class="feature-title">10 видов овощей</div>
+                            <div class="feature-desc">От моркови до арбуза, с разной доходностью</div>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">⚡</div>
+                        <div class="feature-text">
+                            <div class="feature-title">5 типов апгрейдов</div>
+                            <div class="feature-desc">Увеличивайте скорость роста до +180%</div>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">📈</div>
+                        <div class="feature-text">
+                            <div class="feature-title">Расширение огорода</div>
+                            <div class="feature-desc">От 3x3 до 6x6 участков</div>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">👥</div>
+                        <div class="feature-text">
+                            <div class="feature-title">Реферальная система</div>
+                            <div class="feature-desc">100 Coin за каждого приглашенного друга</div>
+                        </div>
+                    </div>
+                    <div class="feature-item">
+                        <div class="feature-icon">💰</div>
+                        <div class="feature-text">
+                            <div class="feature-title">1 Coin = 1 цент USDT</div>
+                            <div class="feature-desc">Реальная ценность вашего дохода</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="economy-stats">
+                    <h4>📊 Экономика проекта</h4>
+                    <div class="stat-row">
+                        <span>🌱 Окупаемость овощей:</span>
+                        <span><strong>9-12 месяцев</strong></span>
+                    </div>
+                    <div class="stat-row">
+                        <span>⚡ Окупаемость апгрейдов:</span>
+                        <span><strong>9-12 месяцев</strong></span>
+                    </div>
+                    <div class="stat-row">
+                        <span>💎 Долгосрочный проект:</span>
+                        <span><strong>Стабильность и надежность</strong></span>
+                    </div>
+                    <div class="stat-row">
+                        <span>📅 Вывод средств:</span>
+                        <span><strong>от 10 Coin</strong></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-panel">
+                <div class="tabs">
+                    <button class="tab-btn active" onclick="switchTab('login')">🔐 Вход</button>
+                    <button class="tab-btn" onclick="switchTab('register')">✨ Регистрация</button>
+                </div>
+                
+                <!-- Форма входа с CSRF -->
+                <div id="login-tab" class="tab-content active">
+                    <form method="post" action="/login">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="login">
+                        <div class="input-group">
+                            <label>👤 Логин</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="login" placeholder="Латинские буквы, цифры, _ - ." required>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>🔒 Пароль</label>
+                            <div class="input-wrapper">
+                                <input type="password" name="password" id="login-password" placeholder="Введите пароль" required>
+                                <span class="toggle-password" onclick="togglePassword('login-password')">👁️</span>
+                            </div>
+                        </div>
+                        <button type="submit">🚀 Войти в игру</button>
+                    </form>
+                </div>
+                
+                <!-- Форма регистрации с CSRF -->
+                <div id="register-tab" class="tab-content">
+                    <form method="post" action="/login" id="register-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="register">
+                        
+                        <!-- Скрытое поле для referrer_id -->
+                        <input type="hidden" name="referrer_id" id="hidden_referrer_id" value="{{ referrer_id or '' }}">
+                        
+                        <div class="input-group">
+                            <label>👤 Логин</label>
+                            <div class="input-wrapper">
+                                <input type="text" name="login" id="reg-login" placeholder="Латинские буквы, цифры, _ - ." required>
+                            </div>
+                        </div>
+                        <div class="input-group">
+                            <label>🔒 Пароль</label>
+                            <div class="input-wrapper">
+                                <input type="password" name="password" id="reg-password" placeholder="4-30 символов" required onkeyup="checkPasswordStrength()">
+                                <span class="toggle-password" onclick="togglePassword('reg-password')">👁️</span>
+                            </div>
+                            <div class="password-strength">
+                                <div>Сложность: <span id="strength-text">слабый</span></div>
+                                <div class="strength-bar-container">
+                                    <div class="strength-bar" id="strength-bar"></div>
+                                </div>
+                            </div>
+                            <div class="rules" style="margin-top: 5px; padding: 8px;">
+                                <small>✓ от 4 до 30 символов</small><br>
+                                <small>✓ латиница, цифры, спецсимволы</small><br>
+                                <small>✓ запрещены русские буквы</small>
+                            </div>
+                        </div>
+                        
+                        <div id="referral-info-container" style="display: none;" class="referral-info">
+                            <span class="emoji">🎉</span>
+                            <span>Вы перешли по реферальной ссылке! После регистрации вы получите <strong>200 Coin</strong> бонуса!</span>
+                        </div>
+                        
+                        <button type="submit">🎁 Создать аккаунт и получить 100 Coin</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Рекламный блок -->
+        <div class="ad-wrapper">
+            <!-- BEGIN AADS AD UNIT 2432391 -->
+            <div id="frame" style="width: 100%;margin: auto;position: relative;">
+                <iframe data-aa='2432391' src='//acceptable.a-ads.com/2432391/?size=Adaptive'
+                        style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
+            </div>
+            <!-- END AADS AD UNIT 2432391 -->
+        </div>
+    </div>
+    
+    <script>
+    function switchTab(tab) {
+        const loginTab = document.getElementById('login-tab');
+        const registerTab = document.getElementById('register-tab');
+        const loginBtn = document.querySelector('.tab-btn:first-child');
+        const registerBtn = document.querySelector('.tab-btn:last-child');
+        
+        if (tab === 'login') {
+            loginTab.classList.add('active');
+            registerTab.classList.remove('active');
+            loginBtn.classList.add('active');
+            registerBtn.classList.remove('active');
+        } else {
+            loginTab.classList.remove('active');
+            registerTab.classList.add('active');
+            loginBtn.classList.remove('active');
+            registerBtn.classList.add('active');
+        }
+    }
+    
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const icon = input.nextElementSibling;
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            icon.textContent = '👁️';
+        }
+    }
+    
+    function checkPasswordStrength() {
+        const password = document.getElementById('reg-password').value;
+        const strengthText = document.getElementById('strength-text');
+        const strengthBar = document.getElementById('strength-bar');
+        
+        let strength = 0;
+        
+        if (password.length === 0) {
+            strengthText.textContent = 'слабый';
+            strengthBar.style.width = '0%';
+            strengthBar.className = 'strength-bar';
+            return;
+        }
+        
+        if (password.length >= 8) strength++;
+        if (password.match(/[a-z]/)) strength++;
+        if (password.match(/[A-Z]/)) strength++;
+        if (password.match(/[0-9]/)) strength++;
+        if (password.match(/[^a-zA-Z0-9]/)) strength++;
+        
+        strengthBar.className = 'strength-bar';
+        
+        if (strength <= 2) {
+            strengthText.textContent = 'слабый';
+            strengthBar.classList.add('weak');
+            strengthBar.style.width = '33%';
+        } else if (strength <= 4) {
+            strengthText.textContent = 'средний';
+            strengthBar.classList.add('medium');
+            strengthBar.style.width = '66%';
+        } else {
+            strengthText.textContent = 'сильный';
+            strengthBar.classList.add('strong');
+            strengthBar.style.width = '100%';
+        }
+    }
+    
+    // Обработка реферальной ссылки
+    const hiddenReferrerInput = document.getElementById('hidden_referrer_id');
+    const referralInfoDiv = document.getElementById('referral-info-container');
+    const referrerValue = hiddenReferrerInput.value;
+    
+    if (referrerValue) {
+        referralInfoDiv.style.display = 'flex';
+        
+        const existingAlert = document.querySelector('.alert-referral');
+        if (!existingAlert) {
+            const flashMessages = document.querySelector('.flash-messages');
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-referral';
+            alertDiv.innerHTML = '🎉 Вы перешли по реферальной ссылке! После регистрации вы получите 200 Coin бонуса!';
+            flashMessages.appendChild(alertDiv);
+            
+            setTimeout(() => {
+                alertDiv.style.animation = 'slideOutRight 0.5s ease';
+                setTimeout(() => alertDiv.remove(), 500);
+            }, 5000);
+        }
+    }
+    
+    // Автоматическое скрытие flash-сообщений
+    setTimeout(() => {
+        const messages = document.querySelectorAll('.alert:not(.alert-referral)');
+        messages.forEach(msg => {
+            msg.style.animation = 'slideOutRight 0.5s ease';
+            setTimeout(() => msg.remove(), 500);
+        });
+    }, 3000);
+    </script>
+</body>
+</html>

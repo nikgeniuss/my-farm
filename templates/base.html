@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🌾 Моя Ферма</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c2c 0%, #2a5a3a 100%);
+            min-height: 100vh;
+            animation: skyPulse 10s ease infinite;
+        }
+        
+        @keyframes skyPulse {
+            0%, 100% { background: linear-gradient(135deg, #1e3c2c 0%, #2a5a3a 100%); }
+            50% { background: linear-gradient(135deg, #2a5a3a 0%, #3e7a4a 100%); }
+        }
+        
+        .cloud {
+            position: fixed;
+            background: rgba(255,255,255,0.9);
+            border-radius: 100% 100% 100% 100%;
+            pointer-events: none;
+            animation: floatCloud linear infinite;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            z-index: 0;
+        }
+        
+        .cloud::before,
+        .cloud::after {
+            content: '';
+            position: absolute;
+            background: rgba(255,255,255,0.9);
+            border-radius: 50%;
+        }
+        
+        .cloud::before {
+            width: 60%;
+            height: 60%;
+            top: -40%;
+            left: 15%;
+        }
+        
+        .cloud::after {
+            width: 70%;
+            height: 70%;
+            top: -30%;
+            right: 15%;
+        }
+        
+        @keyframes floatCloud {
+            from { transform: translateX(-200px); }
+            to { transform: translateX(100vw); }
+        }
+        
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+            max-width: 400px;
+        }
+        
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            animation: slideInRight 0.5s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+            to {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+        }
+        
+        .alert-success {
+            background: linear-gradient(135deg, #4caf50, #45a049);
+            color: white;
+            border-left: 5px solid #2e7d32;
+        }
+        
+        .alert-error {
+            background: linear-gradient(135deg, #f44336, #da190b);
+            color: white;
+            border-left: 5px solid #8b0000;
+        }
+        
+        .alert-warning {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            border-left: 5px solid #e65100;
+        }
+        
+        .alert-info {
+            background: linear-gradient(135deg, #2196f3, #1976d2);
+            color: white;
+            border-left: 5px solid #0d47a1;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            animation: slideDown 0.5s ease;
+            position: relative;
+            z-index: 10000;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .balance {
+            font-size: 28px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #f5af19, #f12711);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: pulse 2s ease infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .stats {
+            background: rgba(0,0,0,0.1);
+            border-radius: 15px;
+            padding: 10px 20px;
+            text-align: center;
+            margin-top: 15px;
+        }
+        
+        .stats p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        
+        .stats .income {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2e7d32;
+        }
+        
+        .menu {
+            position: relative;
+            display: inline-block;
+            z-index: 10001;
+        }
+        
+        .menu-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        .menu-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .menu-content {
+            display: none;
+            position: absolute;
+            background: white;
+            min-width: 200px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            border-radius: 10px;
+            z-index: 10002;
+            top: 100%;
+            left: 0;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .menu:hover .menu-content {
+            display: block;
+        }
+        
+        .menu-content a {
+            color: #333;
+            padding: 12px 20px;
+            text-decoration: none;
+            display: block;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .menu-content a:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .placeholder {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 60px;
+            text-align: center;
+            font-size: 24px;
+            color: #666;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .ad-wrapper {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        @media (max-width: 768px) {
+            .balance {
+                font-size: 20px;
+            }
+            
+            .menu-button {
+                padding: 8px 16px;
+                font-size: 14px;
+            }
+            
+            .stats p {
+                font-size: 12px;
+            }
+            
+            .ad-wrapper iframe {
+                width: 100% !important;
+            }
+        }
+        
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            animation: particleFloat linear infinite;
+            z-index: 0;
+        }
+        
+        @keyframes particleFloat {
+            0% {
+                transform: translateY(100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .logout-btn {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            padding: 8px 20px;
+            border-radius: 50px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s;
+        }
+        
+        .logout-btn:hover {
+            transform: scale(1.05);
+        }
+    </style>
+    <script>
+        var csrf_token = "{{ csrf_token() }}";
+        
+        function createCloud() {
+            const cloud = document.createElement('div');
+            cloud.className = 'cloud';
+            const size = Math.random() * 100 + 80;
+            cloud.style.width = size + 'px';
+            cloud.style.height = (size * 0.6) + 'px';
+            cloud.style.top = Math.random() * 60 + '%';
+            cloud.style.left = '-200px';
+            cloud.style.animationDuration = Math.random() * 30 + 20 + 's';
+            cloud.style.animationDelay = Math.random() * 10 + 's';
+            cloud.style.opacity = Math.random() * 0.6 + 0.3;
+            document.body.appendChild(cloud);
+            setTimeout(() => cloud.remove(), 40000);
+        }
+        setInterval(createCloud, 8000);
+        
+        function createParticle() {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.innerHTML = ['🍃', '🍂', '🌿', '✨'][Math.floor(Math.random() * 4)];
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.fontSize = Math.random() * 20 + 10 + 'px';
+            particle.style.animationDuration = Math.random() * 10 + 5 + 's';
+            particle.style.animationDelay = Math.random() * 5 + 's';
+            document.body.appendChild(particle);
+            setTimeout(() => particle.remove(), 15000);
+        }
+        setInterval(createParticle, 3000);
+        
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+        }
+        
+        window.addEventListener('load', () => {
+            const balance = document.querySelector('.balance');
+            if (balance) {
+                balance.style.animation = 'none';
+                setTimeout(() => balance.style.animation = 'pulse 2s ease infinite', 10);
+            }
+        });
+        
+        setTimeout(() => {
+            const messages = document.querySelectorAll('.alert');
+            messages.forEach(msg => {
+                msg.style.animation = 'slideOutRight 0.5s ease';
+                setTimeout(() => msg.remove(), 500);
+            });
+        }, 3000);
+        
+        function addCSRFToken(xhr) {
+            xhr.setRequestHeader('X-CSRFToken', csrf_token);
+        }
+        
+        window.csrf_fetch = function(url, options) {
+            options = options || {};
+            options.headers = options.headers || {};
+            options.headers['X-CSRFToken'] = csrf_token;
+            return fetch(url, options);
+        };
+    </script>
+</head>
+<body>
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div class="container">
+        <div class="header">
+            <div class="user-info">
+                <div class="menu">
+                    <button class="menu-button">☰ Меню</button>
+                    <div class="menu-content">
+                        <a href="/">🌾 Огород</a>
+                        <a href="/storage">📦 Склад</a>
+                        <a href="/referrals">👥 Рефералы</a>
+                        <a href="/deposit">💳 Пополнить</a>
+                        <a href="/withdraw">💰 Вывести</a>
+                                                <a href="/leaderboard">🏆 Таблица лидеров</a>
+                        <a href="/about">ℹ️ О нас</a>
+                        <a href="/logout" class="logout-btn">🚪 Выйти</a>
+                    </div>
+                </div>
+                {% if user %}
+                <div class="balance">💰 {{ "%.2f"|format(user.balance) }} Coin</div>
+                <div>👤 {{ user.login }}</div>
+                {% endif %}
+            </div>
+            {% if user and income_per_sec is defined %}
+            <div class="stats">
+                <p>📊 Статистика дохода:</p>
+                <p class="income">💰 {{ "%.2f"|format(income_per_sec) }} Coin/сек | ⏱️ {{ "%.2f"|format(income_per_hour) }} Coin/час | 📅 {{ "%.0f"|format(income_per_day) }} Coin/день | 📆 {{ "%.0f"|format(income_per_month) }} Coin/мес</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="ad-wrapper">
+            <!-- BEGIN AADS AD UNIT 2432391 -->
+            <div id="frame" style="width: 100%;margin: auto;position: relative; text-align: center;">
+                <iframe data-aa='2432391' src='//acceptable.a-ads.com/2432391/?size=Adaptive'
+                        style='border:0; padding:0; width:70%; height:auto; overflow:hidden;display: block;margin: auto'></iframe>
+            </div>
+            <!-- END AADS AD UNIT 2432391 -->
+        </div>
+        
+
+        <!-- Бегущая строка активности -->
+        <div style="background: linear-gradient(135deg, #1e3c2c, #2e7d32); border-radius: 12px; padding: 8px 15px; margin-top: 12px; overflow: hidden; position: relative;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="color: #a5d6a7; font-size: 12px; white-space: nowrap; font-weight: bold;">📡 Лента:</span>
+                <div style="overflow: hidden; flex: 1;">
+                    <div id="activityTicker" style="display: flex; gap: 40px; white-space: nowrap; animation: tickerScroll 30s linear infinite;">
+                        <span style="color: #e8f5e9; font-size: 13px;">⏳ Загрузка...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <style>
+        @keyframes tickerScroll {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        #activityTicker:hover { animation-play-state: paused; }
+        </style>
+
+        <script>
+        function loadActivity() {
+            fetch('/api/activity')
+                .then(r => r.json())
+                .then(data => {
+                    if (!data.length) return;
+                    const ticker = document.getElementById('activityTicker');
+                    const items = data.map(e => `<span style="color: #e8f5e9; font-size: 13px;">${e.message}</span>`).join('<span style="color: #4caf50; margin: 0 10px;">•</span>');
+                    // Дублируем для бесшовной прокрутки
+                    ticker.innerHTML = items + '<span style="color: #4caf50; margin: 0 20px;">•</span>' + items;
+                    // Скорость зависит от длины
+                    const duration = Math.max(20, data.length * 4);
+                    ticker.style.animationDuration = duration + 's';
+                })
+                .catch(() => {});
+        }
+        loadActivity();
+        setInterval(loadActivity, 30000);
+        </script>
+
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>
