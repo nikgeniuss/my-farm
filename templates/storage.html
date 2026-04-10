@@ -6,14 +6,14 @@
             <h2 style="color: #2e7d32;">📦 Мой склад</h2>
             <div style="background: linear-gradient(135deg, #667eea, #764ba2); padding: 15px; border-radius: 15px; color: white; text-align: center;">
                 <div>📊 Вместимость склада</div>
-                <div style="font-size: 24px; font-weight: bold;">{{ user.storage_used|int }} / {{ user.storage_capacity|int }}</div>
-                <div style="font-size: 12px;">{{ (user.storage_used / user.storage_capacity * 100)|int }}% заполнено</div>
+                <div style="font-size: 24px; font-weight: bold;">{{ "%.2f"|format(user.storage_used) }} / {{ "%.0f"|format(user.storage_capacity) }}</div>
+                <div style="font-size: 12px;">{{ ((user.storage_used / user.storage_capacity * 100)|int) if user.storage_capacity > 0 else 0 }}% заполнено</div>
             </div>
         </div>
         
         <div style="background: #e0e0e0; border-radius: 10px; margin-bottom: 20px; overflow: hidden;">
-            <div style="width: {{ (user.storage_used / user.storage_capacity * 100)|int }}%; background: linear-gradient(135deg, #4caf50, #2e7d32); height: 30px; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
-                {{ (user.storage_used / user.storage_capacity * 100)|int }}%
+            <div style="width: {{ ((user.storage_used / user.storage_capacity * 100)|int) if user.storage_capacity > 0 else 0 }}%; background: linear-gradient(135deg, #4caf50, #2e7d32); height: 30px; transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                {{ ((user.storage_used / user.storage_capacity * 100)|int) if user.storage_capacity > 0 else 0 }}%
             </div>
         </div>
         
@@ -25,7 +25,7 @@
                 </button>
             </form>
             <p style="font-size: 12px; color: #666; margin-top: 5px;">
-                Текущий уровень: {{ user.storage_level }} | Вместимость: {{ user.storage_capacity }} шт. | Следующий уровень: +{{ get_storage_capacity(user.storage_level + 1) - user.storage_capacity }} шт.
+                Текущий уровень: {{ user.storage_level }} | Вместимость: {{ "%.0f"|format(user.storage_capacity) }} шт. | Следующий уровень: +{{ "%.0f"|format(get_storage_capacity(user.storage_level + 1) - user.storage_capacity) }} шт.
             </p>
         </div>
         
@@ -34,7 +34,7 @@
             <form method="post" action="/sell_all_storage" onsubmit="return confirm('⚠️ Вы уверены, что хотите продать ВЕСЬ урожай со склада? Это действие нельзя отменить!');">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" style="background: linear-gradient(135deg, #f44336, #d32f2f); color: white; border: none; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-size: 16px;">
-                    💰 Продать ВСЁ ({{ storage_dict.values()|sum|int }} шт = {{ storage_dict.values()|sum|int }} Coin)
+                    💰 Продать ВСЁ ({{ "%.8f"|format(storage_dict.values()|sum) }} шт = {{ "%.8f"|format(storage_dict.values()|sum) }} Coin)
                 </button>
             </form>
             <p style="font-size: 12px; color: #666; margin-top: 5px;">
@@ -51,30 +51,30 @@
                         <div style="font-size: 50px;">{{ vegetables[crop_key].emoji }}</div>
                         <div>
                             <h3 style="color: {{ vegetables[crop_key].color }};">{{ vegetables[crop_key].name }}</h3>
-                            <div style="font-size: 24px; font-weight: bold; color: #2e7d32;">{{ quantity|int }} шт</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #2e7d32;">{{ "%.8f"|format(quantity) }} шт</div>
                         </div>
                     </div>
                     
                     <div style="margin: 15px 0; padding: 10px; background: rgba(0,0,0,0.05); border-radius: 10px;">
                         <p>💰 Цена: 1 овощ = 1 Coin</p>
-                        <p>💵 Общая стоимость: {{ quantity|int }} Coin</p>
+                        <p>💵 Общая стоимость: {{ "%.8f"|format(quantity) }} Coin</p>
                     </div>
                     
                     <div style="display: flex; gap: 10px;">
                         <form method="post" action="/sell/{{ crop_key }}" style="flex: 2;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div style="display: flex; gap: 5px;">
-                                <input type="number" name="quantity" min="1" max="{{ quantity|int }}" value="{{ quantity|int }}" 
-                                       style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                                <input type="number" name="quantity" min="0.00000001" max="{{ quantity }}" step="0.00000001" value="{{ quantity }}" 
+                                       style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px;">
                                 <button type="submit" style="background: linear-gradient(135deg, #4caf50, #2e7d32); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
                                     💰 Продать
                                 </button>
                             </div>
                         </form>
-                        <form method="post" action="/sell_all/{{ crop_key }}" style="flex: 1;" onsubmit="return confirm('Продать все {{ vegetables[crop_key].name }} ({{ quantity|int }} шт) за {{ quantity|int }} Coin?');">
+                        <form method="post" action="/sell_all/{{ crop_key }}" style="flex: 1;" onsubmit="return confirm('Продать все {{ vegetables[crop_key].name }} ({{ "%.8f"|format(quantity) }} шт) за {{ "%.8f"|format(quantity) }} Coin?');">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" style="background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; width: 100%;">
-                                📦 Все
+                                📦 Всё
                             </button>
                         </form>
                     </div>
@@ -96,6 +96,7 @@
             <p>🏚️ Вместимость склада можно увеличивать бесконечно!</p>
             <p>💰 1 овощ = 1 Coin. Продавайте когда хотите!</p>
             <p>💡 <strong>Совет:</strong> Чем выше уровень склада, тем больше урожая вы можете хранить!</p>
+            <p>🔢 <strong>Дробные значения:</strong> Система поддерживает точность до 8 знаков после запятой.</p>
         </div>
     </div>
 </div>
