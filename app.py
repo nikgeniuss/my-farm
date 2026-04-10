@@ -355,26 +355,48 @@ def get_user_with_stats(user_id, skip_harvest=False):
         if not skip_harvest:
             harvest_crops(user_id)
         conn = get_db()
-        user = conn.execute('SELECT login, balance, grid_size, storage_level, bonus_balance, farm_balance FROM users WHERE id = ?', (user_id,)).fetchone()
+        user = conn.execute('''
+            SELECT 
+                login, 
+                balance, 
+                grid_size, 
+                storage_level, 
+                bonus_balance, 
+                farm_balance,
+                register_ip,
+                register_ua,
+                device_hash,
+                referrer_id,
+                created_at,
+                is_admin
+            FROM users 
+            WHERE id = ?
+        ''', (user_id,)).fetchone()
+        
         if not user:
             return None
+            
         user_dict = dict(user)
+        
         garden = conn.execute('SELECT crop, upgrades_json FROM garden WHERE user_id = ?', (user_id,)).fetchall()
         total_income_per_sec = 0
         for cell in garden:
             if cell['crop']:
                 upgrades = json.loads(cell['upgrades_json']) if cell['upgrades_json'] else {}
                 total_income_per_sec += calculate_income(cell['crop'], upgrades)
+                
         user_dict['income_per_sec'] = total_income_per_sec
         user_dict['income_per_hour'] = total_income_per_sec * 3600
         user_dict['income_per_day'] = total_income_per_sec * 86400
         user_dict['income_per_month'] = total_income_per_sec * 2592000
         user_dict['storage_capacity'] = get_storage_capacity(user['storage_level'])
+        
         storage_items = conn.execute('SELECT quantity FROM storage WHERE user_id = ?', (user_id,)).fetchall()
         user_dict['storage_used'] = sum(item['quantity'] for item in storage_items) if storage_items else 0
+        
         return user_dict
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in get_user_with_stats: {e}")
         return None
 
 def get_referrals(user_id):
@@ -1578,10 +1600,14 @@ init_db()
 migrate_passwords()
 start_transaction_monitor()
 
+# Получаем реальный URL для админки
+railway_url = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost:5000')
+admin_url = f"https://{railway_url}/{ADMIN_SECRET}/dashboard" if railway_url != 'localhost:5000' else f"http://{railway_url}/{ADMIN_SECRET}/dashboard"
+
 print(f"\n" + "="*50)
 print(f"🔐 АДМИН-ПАНЕЛЬ:")
 print(f"   Секретный путь: {ADMIN_SECRET}")
-print(f"   Ссылка: http://localhost:5000/{ADMIN_SECRET}/dashboard")
+print(f"   Ссылка: {admin_url}")
 print("="*50 + "\n")
 
 if __name__ == '__main__':
