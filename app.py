@@ -1246,7 +1246,18 @@ def api_stats():
     user = get_user_with_stats(session['user_id'], skip_harvest=True)
     if not user:
         return {'error': 'User not found'}, 404
-    return {'balance': user['balance'], 'income_per_sec': user['income_per_sec'], 'income_per_hour': user['income_per_hour'], 'income_per_day': user['income_per_day'], 'income_per_month': user['income_per_month'], 'grid_size': user['grid_size'], 'storage_level': user['storage_level'], 'storage_capacity': user['storage_capacity'], 'storage_used': user['storage_used']}
+    return {
+        'farm_balance': user.get('farm_balance', 0),
+        'bonus_balance': user.get('bonus_balance', 0),
+        'income_per_sec': user['income_per_sec'], 
+        'income_per_hour': user['income_per_hour'], 
+        'income_per_day': user['income_per_day'], 
+        'income_per_month': user['income_per_month'], 
+        'grid_size': user['grid_size'], 
+        'storage_level': user['storage_level'], 
+        'storage_capacity': user['storage_capacity'], 
+        'storage_used': user['storage_used']
+    }
 
 @app.route('/api/activity')
 @login_required
