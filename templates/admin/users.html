@@ -12,23 +12,31 @@
                 <tr style="background: #2e7d32; color: white;">
                     <th style="padding: 12px;">ID</th>
                     <th style="padding: 12px;">Логин</th>
-                    <th style="padding: 12px;">Баланс (Coin)</th>
-                    <th style="padding: 12px;">Уровень склада</th>
-                    <th style="padding: 12px;">Размер огорода</th>
-                    <th style="padding: 12px;">Дата регистрации</th>
+                    <th style="padding: 12px;">Ферм. баланс</th>
+                    <th style="padding: 12px;">Бонус. баланс</th>
+                    <th style="padding: 12px;">Ур. склада</th>
+                    <th style="padding: 12px;">Огород</th>
+                    <th style="padding: 12px;">Статус</th>
                     <th style="padding: 12px;">Админ</th>
                     <th style="padding: 12px;">Действия</th>
-                 </tr>
+                </tr>
             </thead>
             <tbody>
                 {% for u in users %}
                 <tr style="border-bottom: 1px solid #ddd;">
                     <td style="padding: 12px;">#{{ u.id }}</td>
                     <td style="padding: 12px;">{{ u.login }}</td>
-                    <td style="padding: 12px; font-weight: bold;">{{ "%.2f"|format(u.balance) }}</td>
+                    <td style="padding: 12px;">{{ "%.2f"|format(u.farm_balance) }}</td>
+                    <td style="padding: 12px;">{{ "%.2f"|format(u.bonus_balance) }}</td>
                     <td style="padding: 12px;">{{ u.storage_level }}</td>
                     <td style="padding: 12px;">{{ u.grid_size }}x{{ u.grid_size }}</td>
-                    <td style="padding: 12px;">{{ u.created_at|timestamp_to_date }}</td>
+                    <td style="padding: 12px;">
+                        {% if u.is_banned %}
+                            <span style="background: #f44336; color: white; padding: 4px 10px; border-radius: 20px;">🔴 Заблокирован</span>
+                        {% else %}
+                            <span style="background: #4caf50; color: white; padding: 4px 10px; border-radius: 20px;">🟢 Активен</span>
+                        {% endif %}
+                    </td>
                     <td style="padding: 12px;">
                         {% if u.is_admin %}
                             <span style="background: #4caf50; color: white; padding: 4px 10px; border-radius: 20px;">✅ Админ</span>
@@ -37,7 +45,8 @@
                         {% endif %}
                     </td>
                     <td style="padding: 12px;">
-                        <form method="post" action="/{{ admin_secret }}/toggle_admin/{{ u.id }}">
+                        <a href="/{{ admin_secret }}/user/{{ u.id }}" style="background: #2196f3; color: white; padding: 5px 10px; border-radius: 5px; text-decoration: none; display: inline-block; margin-bottom: 5px;">✏️ Редактировать</a>
+                        <form method="post" action="/{{ admin_secret }}/toggle_admin/{{ u.id }}" style="display: inline-block;">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" style="background: {% if u.is_admin %}#f44336{% else %}#4caf50{% endif %}; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer;">
                                 {% if u.is_admin %}🔽 Снять админа{% else %}🔼 Назначить админа{% endif %}
