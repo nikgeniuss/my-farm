@@ -852,6 +852,62 @@ def login():
     referrer_id = request.args.get('ref')
     return render_template('login.html', referrer_id=referrer_id)
 
+@app.route('/profile')
+@login_required
+@check_banned
+@rate_limit(limit=30, window=60)
+def profile():
+    user = get_user_with_stats(session['user_id'], skip_harvest=True)
+    if not user:
+        flash('❌ Ошибка загрузки данных', 'error')
+        return redirect(url_for('logout'))
+    
+    conn = get_db()
+    
+    # Сумма пополнений
+    total_deposits = conn.execute('''
+        SELECT SUM(amount) as total FROM deposit_requests 
+        WHERE user_id = ? AND status = 'confirmed'
+    ''', (session['user_id'],)).fetchone()['total'] or 0
+    
+    # Количество пополнений
+    deposits_count = conn.execute('''
+        SELECT COUNT(*) as count FROM deposit_requests 
+        WHERE user_id = ? AND status = 'confirmed'
+    ''', (session['user_id'],)).fetchone()['count'] or 0
+    
+    # Сумма выводов
+    total_withdraws = conn.execute('''
+        SELECT SUM(amount) as total FROM withdraw_requests 
+        WHERE user_id = ? AND status = 'completed'
+    ''', (session['user_id'],)).fetchone()['total'] or 0
+    
+    # Количество выводов
+    withdraws_count = conn.execute('''
+        SELECT COUNT(*) as count FROM withdraw_requests 
+        WHERE user_id = ? AND status = 'completed'
+    ''', (session['user_id'],)).fetchone()['count'] or 0
+    
+    # Сумма в процессе вывода (pending)
+    pending_withdraws = conn.execute('''
+        SELECT SUM(amount) as total FROM withdraw_requests 
+        WHERE user_id = ? AND status = 'pending'
+    ''', (session['user_id'],)).fetchone()['total'] or 0
+    
+    conn.close()
+    
+    return render_template('profile.html', 
+                          user=user,
+                          total_deposits=total_deposits,
+                          deposits_count=deposits_count,
+                          total_withdraws=total_withdraws,
+                          withdraws_count=withdraws_count,
+                          pending_withdraws=pending_withdraws,
+                          income_per_sec=user['income_per_sec'],
+                          income_per_hour=user['income_per_hour'],
+                          income_per_day=user['income_per_day'],
+                          income_per_month=user['income_per_month'])
+
 @app.route('/logout')
 def logout():
     session.clear()
