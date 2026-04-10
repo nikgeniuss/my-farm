@@ -163,8 +163,33 @@
             gap: 15px;
         }
         
-        .balance {
-            font-size: 28px;
+        .balances {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .farm-balance {
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #2e7d32, #1e3c2c);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .bonus-balance {
+            font-size: 20px;
+            font-weight: bold;
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .total-balance {
+            font-size: 24px;
             font-weight: bold;
             background: linear-gradient(135deg, #f5af19, #f12711);
             -webkit-background-clip: text;
@@ -276,8 +301,12 @@
         }
         
         @media (max-width: 768px) {
-            .balance {
-                font-size: 20px;
+            .total-balance {
+                font-size: 18px;
+            }
+            
+            .farm-balance, .bonus-balance {
+                font-size: 14px;
             }
             
             .menu-button {
@@ -291,6 +320,10 @@
             
             .ad-wrapper iframe {
                 width: 100% !important;
+            }
+            
+            .balances {
+                gap: 10px;
             }
         }
         
@@ -323,6 +356,14 @@
         
         .logout-btn:hover {
             transform: scale(1.05);
+        }
+        
+        .badge {
+            background: rgba(0,0,0,0.1);
+            border-radius: 20px;
+            padding: 5px 12px;
+            font-size: 12px;
+            margin-left: 8px;
         }
     </style>
     <script>
@@ -363,10 +404,10 @@
         }
         
         window.addEventListener('load', () => {
-            const balance = document.querySelector('.balance');
-            if (balance) {
-                balance.style.animation = 'none';
-                setTimeout(() => balance.style.animation = 'pulse 2s ease infinite', 10);
+            const totalBalance = document.querySelector('.total-balance');
+            if (totalBalance) {
+                totalBalance.style.animation = 'none';
+                setTimeout(() => totalBalance.style.animation = 'pulse 2s ease infinite', 10);
             }
         });
         
@@ -412,13 +453,27 @@
                         <a href="/referrals">👥 Рефералы</a>
                         <a href="/deposit">💳 Пополнить</a>
                         <a href="/withdraw">💰 Вывести</a>
-                                                <a href="/leaderboard">🏆 Таблица лидеров</a>
+                        <a href="/leaderboard">🏆 Таблица лидеров</a>
                         <a href="/about">ℹ️ О нас</a>
                         <a href="/logout" class="logout-btn">🚪 Выйти</a>
                     </div>
                 </div>
+                
                 {% if user %}
-                <div class="balance">💰 {{ "%.2f"|format(user.balance) }} Coin</div>
+                <div class="balances">
+                    <div class="farm-balance">
+                        🌾 {{ "%.2f"|format(user.farm_balance) }} Coin
+                        <span class="badge">фермерский</span>
+                    </div>
+                    <div class="bonus-balance">
+                        🎁 {{ "%.2f"|format(user.bonus_balance) }} Coin
+                        <span class="badge">бонусный</span>
+                    </div>
+                    <div class="total-balance">
+                        💰 {{ "%.2f"|format(user.farm_balance + user.bonus_balance) }} Coin
+                        <span class="badge">всего</span>
+                    </div>
+                </div>
                 <div>👤 {{ user.login }}</div>
                 {% endif %}
             </div>
@@ -430,6 +485,25 @@
             {% endif %}
         </div>
         
+        <!-- Баннер бета-теста -->
+        <div style="background: linear-gradient(135deg, #ff9800, #f57c00); border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; color: white; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+            <div style="font-size: 20px; margin-bottom: 8px;">🌱 Ты среди первых! 🌱</div>
+            <div style="font-size: 14px; opacity: 0.95; line-height: 1.4;">
+                Проект «Моя Ферма» сейчас в стадии бета-тестирования. Все ключевые механики уже работают: сажай овощи, 
+                покупай апгрейды, выводи монеты и приглашай друзей.
+            </div>
+            <div style="font-size: 14px; margin-top: 10px; background: rgba(0,0,0,0.25); padding: 8px 15px; border-radius: 25px; display: inline-block;">
+                🎁 <strong>Твоё преимущество:</strong> Ты попал на уникальные стартовые цены! После официального запуска цены вырастут, 
+                а твои овощи и апгрейды останутся с тобой.
+            </div>
+            <div style="font-size: 13px; margin-top: 10px; opacity: 0.9;">
+                🚀 В разработке: система достижений, еженедельные ивенты, турнирная таблица и PvP-битвы фермеров!
+            </div>
+            <div style="font-size: 12px; margin-top: 8px; opacity: 0.8;">
+                💚 Спасибо, что с нами на старте!
+            </div>
+        </div>
+        
         <div class="ad-wrapper">
             <!-- BEGIN AADS AD UNIT 2432391 -->
             <div id="frame" style="width: 100%;margin: auto;position: relative; text-align: center;">
@@ -439,13 +513,12 @@
             <!-- END AADS AD UNIT 2432391 -->
         </div>
         
-
         <!-- Бегущая строка активности -->
         <div style="background: linear-gradient(135deg, #1e3c2c, #2e7d32); border-radius: 12px; padding: 8px 15px; margin-top: 12px; overflow: hidden; position: relative;">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="color: #a5d6a7; font-size: 12px; white-space: nowrap; font-weight: bold;">📡 Лента:</span>
-                <div style="overflow: hidden; flex: 1;">
-                    <div id="activityTicker" style="display: flex; gap: 40px; white-space: nowrap; animation: tickerScroll 30s linear infinite;">
+                <span style="color: #a5d6a7; font-size: 12px; white-space: nowrap; font-weight: bold; z-index: 1;">📡 Лента:</span>
+                <div style="overflow: hidden; flex: 1; position: relative;">
+                    <div id="activityTicker" style="display: inline-block; white-space: nowrap; will-change: transform;">
                         <span style="color: #e8f5e9; font-size: 13px;">⏳ Загрузка...</span>
                     </div>
                 </div>
@@ -454,28 +527,47 @@
 
         <style>
         @keyframes tickerScroll {
-            0%   { transform: translateX(0); }
+            0% { transform: translateX(0); }
             100% { transform: translateX(-50%); }
         }
-        #activityTicker:hover { animation-play-state: paused; }
         </style>
 
         <script>
+        let tickerAnimation = null;
+
         function loadActivity() {
             fetch('/api/activity')
                 .then(r => r.json())
                 .then(data => {
                     if (!data.length) return;
+                    
                     const ticker = document.getElementById('activityTicker');
-                    const items = data.map(e => `<span style="color: #e8f5e9; font-size: 13px;">${e.message}</span>`).join('<span style="color: #4caf50; margin: 0 10px;">•</span>');
-                    // Дублируем для бесшовной прокрутки
+                    const items = data.map(e => `<span style="color: #e8f5e9; font-size: 13px; margin-right: 40px;">${e.message}</span>`).join('');
+                    
                     ticker.innerHTML = items + '<span style="color: #4caf50; margin: 0 20px;">•</span>' + items;
-                    // Скорость зависит от длины
-                    const duration = Math.max(20, data.length * 4);
-                    ticker.style.animationDuration = duration + 's';
+                    
+                    if (tickerAnimation) {
+                        tickerAnimation.cancel();
+                    }
+                    
+                    const contentWidth = ticker.scrollWidth / 2;
+                    const duration = contentWidth / 30;
+                    
+                    tickerAnimation = ticker.animate(
+                        [
+                            { transform: 'translateX(0)' },
+                            { transform: 'translateX(-50%)' }
+                        ],
+                        {
+                            duration: duration * 1000,
+                            iterations: Infinity,
+                            easing: 'linear'
+                        }
+                    );
                 })
                 .catch(() => {});
         }
+
         loadActivity();
         setInterval(loadActivity, 30000);
         </script>
