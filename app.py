@@ -221,6 +221,10 @@ def init_db():
             conn.execute("ALTER TABLE users ADD COLUMN referrer_ua TEXT")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0")
+        except:
+            pass
 
         conn.execute('''CREATE TABLE IF NOT EXISTS activity_log
                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -350,6 +354,19 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+def check_banned(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' in session:
+            conn = get_db()
+            user = conn.execute('SELECT is_banned FROM users WHERE id = ?', (session['user_id'],)).fetchone()
+            if user and user['is_banned']:
+                session.clear()
+                flash('⛔ Ваш аккаунт заблокирован', 'error')
+                return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
 def get_user_with_stats(user_id, skip_harvest=False):
     try:
         if not skip_harvest:
@@ -368,7 +385,8 @@ def get_user_with_stats(user_id, skip_harvest=False):
                 device_hash,
                 referrer_id,
                 created_at,
-                is_admin
+                is_admin,
+                is_banned
             FROM users 
             WHERE id = ?
         ''', (user_id,)).fetchone()
@@ -666,6 +684,7 @@ def timestamp_to_datetime(timestamp):
 
 @app.route('/')
 @login_required
+@check_banned
 @rate_limit(limit=60, window=60)
 def index():
     user = get_user_with_stats(session['user_id'], skip_harvest=False)
@@ -722,9 +741,12 @@ def login():
             return redirect(url_for('login'))
         conn = get_db()
         if action == 'login':
-            user = conn.execute('SELECT id, password, is_admin FROM users WHERE login = ?', (login,)).fetchone()
+            user = conn.execute('SELECT id, password, is_admin, is_banned FROM users WHERE login = ?', (login,)).fetchone()
             if not user:
                 flash('❌ Пользователь не найден', 'error')
+                return redirect(url_for('login'))
+            if user['is_banned']:
+                flash('⛔ Ваш аккаунт заблокирован', 'error')
                 return redirect(url_for('login'))
             if not verify_password(password, user['password']):
                 flash('❌ Неверный пароль', 'error')
@@ -797,7 +819,6 @@ def login():
                 flash('❌ Нельзя приглашать себя с одного IP', 'error')
                 return redirect(url_for('login'))
             
-            
             current_time = time.time()
             hashed_password = hash_password(password)
             
@@ -839,6 +860,7 @@ def logout():
 
 @app.route('/plant/<int:cell_id>', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=20, window=60)
 def plant(cell_id):
     crop_key = request.form.get('crop')
@@ -877,6 +899,7 @@ def plant(cell_id):
 
 @app.route('/upgrade/<int:cell_id>', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=20, window=60)
 def upgrade(cell_id):
     upgrade_key = request.form.get('upgrade')
@@ -922,6 +945,7 @@ def upgrade(cell_id):
 
 @app.route('/expand_garden', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=5, window=300)
 def expand_garden():
     harvest_crops(session['user_id'])
@@ -962,6 +986,7 @@ def expand_garden():
 
 @app.route('/storage')
 @login_required
+@check_banned
 @rate_limit(limit=30, window=60)
 def storage():
     user = get_user_with_stats(session['user_id'], skip_harvest=False)
@@ -975,6 +1000,7 @@ def storage():
 
 @app.route('/sell/<crop>', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=20, window=60)
 def sell_crop(crop):
     if crop not in VEGETABLES:
@@ -1004,11 +1030,12 @@ def sell_crop(crop):
     conn.execute('UPDATE users SET farm_balance = farm_balance + ? WHERE id = ?', (total_earned, session['user_id']))
     conn.commit()
     
-    flash(f'💰 Продано {quantity:.4f} {VEGETABLES[crop]["name"]} за {total_earned:.4f} Coin (зачислено на фермерский баланс)', 'success')
+    flash(f'💰 Продано {quantity:.8f} {VEGETABLES[crop]["name"]} за {total_earned:.8f} Coin (зачислено на фермерский баланс)', 'success')
     return redirect(url_for('storage'))
 
 @app.route('/sell_all/<crop>', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=20, window=60)
 def sell_all_crop(crop):
     if crop not in VEGETABLES:
@@ -1029,11 +1056,12 @@ def sell_all_crop(crop):
     conn.execute('UPDATE users SET farm_balance = farm_balance + ? WHERE id = ?', (total_earned, session['user_id']))
     conn.commit()
     
-    flash(f'💰 Продано всё {VEGETABLES[crop]["name"]} ({quantity:.4f} шт) за {total_earned:.4f} Coin (зачислено на фермерский баланс)', 'success')
+    flash(f'💰 Продано всё {VEGETABLES[crop]["name"]} ({quantity:.8f} шт) за {total_earned:.8f} Coin (зачислено на фермерский баланс)', 'success')
     return redirect(url_for('storage'))
 
 @app.route('/sell_all_storage', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=10, window=60)
 def sell_all_storage():
     conn = get_db()
@@ -1049,11 +1077,12 @@ def sell_all_storage():
     conn.execute('DELETE FROM storage WHERE user_id = ?', (session['user_id'],))
     conn.commit()
     
-    flash(f'💰 Продано всё ({total_items:.4f} шт) за {total_earned:.4f} Coin (зачислено на фермерский баланс)', 'success')
+    flash(f'💰 Продано всё ({total_items:.8f} шт) за {total_earned:.8f} Coin (зачислено на фермерский баланс)', 'success')
     return redirect(url_for('storage'))
 
 @app.route('/upgrade_storage', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=10, window=300)
 def upgrade_storage():
     harvest_crops(session['user_id'])
@@ -1082,6 +1111,7 @@ def upgrade_storage():
 
 @app.route('/referrals')
 @login_required
+@check_banned
 @rate_limit(limit=30, window=60)
 def referrals():
     user = get_user_with_stats(session['user_id'], skip_harvest=True)
@@ -1095,6 +1125,7 @@ def referrals():
 
 @app.route('/deposit')
 @login_required
+@check_banned
 @rate_limit(limit=30, window=60)
 def deposit():
     user = get_user_with_stats(session['user_id'], skip_harvest=True)
@@ -1107,6 +1138,7 @@ def deposit():
 
 @app.route('/create_deposit', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=5, window=300)
 def create_deposit():
     amount = float(request.form.get('amount', 0))
@@ -1133,6 +1165,7 @@ def create_deposit():
 
 @app.route('/withdraw')
 @login_required
+@check_banned
 @rate_limit(limit=30, window=60)
 def withdraw():
     user = get_user_with_stats(session['user_id'], skip_harvest=True)
@@ -1153,6 +1186,7 @@ def withdraw():
 
 @app.route('/create_withdraw', methods=['POST'])
 @login_required
+@check_banned
 @rate_limit(limit=3, window=300)
 def create_withdraw():
     amount = float(request.form.get('amount', 0))
@@ -1183,6 +1217,7 @@ def create_withdraw():
 
 @app.route('/about')
 @login_required
+@check_banned
 @rate_limit(limit=30, window=60)
 def about():
     user = get_user_with_stats(session['user_id'], skip_harvest=True)
@@ -1193,6 +1228,7 @@ def about():
 
 @app.route('/leaderboard')
 @login_required
+@check_banned
 @rate_limit(limit=30, window=60)
 def leaderboard():
     user = get_user_with_stats(session['user_id'], skip_harvest=True)
@@ -1217,6 +1253,7 @@ def leaderboard():
 
 @app.route('/claim_daily_bonus', methods=['POST'])
 @login_required
+@check_banned
 def claim_daily_bonus():
     try:
         result = claim_daily_bonus_db(session['user_id'])
@@ -1230,6 +1267,7 @@ def claim_daily_bonus():
 
 @app.route('/api/stats')
 @login_required
+@check_banned
 @rate_limit(limit=60, window=60)
 def api_stats():
     user = get_user_with_stats(session['user_id'], skip_harvest=True)
@@ -1250,6 +1288,7 @@ def api_stats():
 
 @app.route('/api/activity')
 @login_required
+@check_banned
 def api_activity():
     conn = get_db()
     events = conn.execute(
@@ -1325,6 +1364,7 @@ def verify_login_code(user_id, code):
 
 @app.route('/setup_2fa', methods=['GET', 'POST'])
 @login_required
+@check_banned
 def setup_2fa():
     conn = get_db()
     if request.method == 'POST':
@@ -1342,6 +1382,7 @@ def setup_2fa():
 
 @app.route('/disable_2fa', methods=['POST'])
 @login_required
+@check_banned
 def disable_2fa():
     conn = get_db()
     conn.execute('DELETE FROM user_2fa WHERE user_id = ?', (session['user_id'],))
@@ -1469,7 +1510,10 @@ def admin_deposits():
 @admin_required
 def admin_users():
     conn = get_db()
-    users = conn.execute('SELECT id, login, balance, storage_level, grid_size, created_at, is_admin, bonus_balance, farm_balance FROM users ORDER BY farm_balance DESC').fetchall()
+    users = conn.execute('''
+        SELECT id, login, farm_balance, bonus_balance, storage_level, grid_size, created_at, is_admin, is_banned 
+        FROM users ORDER BY id DESC
+    ''').fetchall()
     return render_template('admin/users.html', users=users, admin_secret=ADMIN_SECRET)
 
 @app.route(f'/{ADMIN_SECRET}/stats')
@@ -1575,6 +1619,77 @@ def toggle_admin(user_id):
     conn.commit()
     flash(f'✅ Права администратора {"выданы" if new_status else "сняты"}', 'success')
     return redirect(url_for('admin_users'))
+
+@app.route(f'/{ADMIN_SECRET}/user/<int:user_id>')
+@admin_required
+def admin_user_detail(user_id):
+    conn = get_db()
+    user = conn.execute('''
+        SELECT id, login, farm_balance, bonus_balance, storage_level, grid_size, 
+               register_ip, register_ua, device_hash, referrer_id, created_at, 
+               is_admin, is_banned
+        FROM users WHERE id = ?
+    ''', (user_id,)).fetchone()
+    
+    if not user:
+        flash('❌ Пользователь не найден', 'error')
+        return redirect(url_for('admin_users'))
+    
+    referrals = conn.execute('SELECT id, login, farm_balance, is_banned FROM users WHERE referrer_id = ?', (user_id,)).fetchall()
+    referrals_tree = []
+    for ref in referrals:
+        children = conn.execute('SELECT id, login FROM users WHERE referrer_id = ?', (ref['id'],)).fetchall()
+        referrals_tree.append({
+            'id': ref['id'],
+            'login': ref['login'],
+            'balance': ref['farm_balance'],
+            'is_banned': ref['is_banned'],
+            'children': [{'id': c['id'], 'login': c['login']} for c in children]
+        })
+    
+    return render_template('admin/user_detail.html', user=user, referrals_tree=referrals_tree, admin_secret=ADMIN_SECRET)
+
+@app.route(f'/{ADMIN_SECRET}/update_balance/<int:user_id>', methods=['POST'])
+@admin_required
+def admin_update_balance(user_id):
+    farm_balance = float(request.form.get('farm_balance', 0))
+    bonus_balance = float(request.form.get('bonus_balance', 0))
+    
+    conn = get_db()
+    conn.execute('UPDATE users SET farm_balance = ?, bonus_balance = ? WHERE id = ?', 
+                (farm_balance, bonus_balance, user_id))
+    conn.commit()
+    
+    flash('✅ Балансы обновлены', 'success')
+    return redirect(url_for('admin_user_detail', user_id=user_id))
+
+@app.route(f'/{ADMIN_SECRET}/change_password/<int:user_id>', methods=['POST'])
+@admin_required
+def admin_change_password(user_id):
+    new_password = request.form.get('new_password')
+    if not new_password or len(new_password) < 4:
+        flash('❌ Пароль должен быть минимум 4 символа', 'error')
+        return redirect(url_for('admin_user_detail', user_id=user_id))
+    
+    hashed = hash_password(new_password)
+    conn = get_db()
+    conn.execute('UPDATE users SET password = ? WHERE id = ?', (hashed, user_id))
+    conn.commit()
+    
+    flash('✅ Пароль изменён', 'success')
+    return redirect(url_for('admin_user_detail', user_id=user_id))
+
+@app.route(f'/{ADMIN_SECRET}/toggle_ban/<int:user_id>', methods=['POST'])
+@admin_required
+def admin_toggle_ban(user_id):
+    conn = get_db()
+    user = conn.execute('SELECT is_banned FROM users WHERE id = ?', (user_id,)).fetchone()
+    new_status = 0 if user['is_banned'] else 1
+    conn.execute('UPDATE users SET is_banned = ? WHERE id = ?', (new_status, user_id))
+    conn.commit()
+    
+    flash('✅ Статус блокировки изменён', 'success')
+    return redirect(url_for('admin_user_detail', user_id=user_id))
 
 def migrate_passwords():
     try:
