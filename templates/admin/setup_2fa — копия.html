@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; max-width: 500px; margin: 0 auto;">
+    <h2 style="color: #2e7d32;">🔐 Двухфакторная аутентификация</h2>
+    
+    {% if user_2fa and user_2fa.enabled %}
+        <div style="background: #e8f5e9; border-radius: 15px; padding: 20px; margin: 20px 0;">
+            <p>✅ 2FA включена</p>
+            <p>📱 Telegram ID: {{ user_2fa.telegram_id }}</p>
+            <form method="post" action="/disable_2fa">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" style="background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">🔓 Отключить 2FA</button>
+            </form>
+        </div>
+    {% else %}
+        <p style="margin: 15px 0;">Настройте 2FA через Telegram</p>
+        <div style="background: #fff3e0; border-radius: 15px; padding: 20px; margin: 20px 0;">
+            <h3>📱 Как получить Telegram ID:</h3>
+            <ol>
+                <li>Найдите бота <strong>@userinfobot</strong> в Telegram</li>
+                <li>Напишите ему любое сообщение</li>
+                <li>Он пришлет ваш ID</li>
+                <li>Скопируйте ID и вставьте ниже</li>
+            </ol>
+        </div>
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom: 15px;">
+                <label>Telegram ID:</label>
+                <input type="text" name="telegram_id" required placeholder="123456789" 
+                       style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px;">
+            </div>
+            <button type="submit" style="background: #4caf50; color: white; border: none; padding: 12px; width: 100%; border-radius: 10px; cursor: pointer;">🔐 Включить 2FA</button>
+        </form>
+    {% endif %}
+    
+    <div style="margin-top: 20px; text-align: center;">
+        <a href="/" style="color: #2e7d32;">← Вернуться</a>
+    </div>
+</div>
+{% endblock %}

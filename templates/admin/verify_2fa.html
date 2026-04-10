@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🌾 Моя Ферма | Подтверждение</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c2c 0%, #2a5a3a 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .verify-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .code-input {
+            font-size: 32px;
+            letter-spacing: 10px;
+            text-align: center;
+            padding: 15px;
+            width: 100%;
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        button {
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .flash-messages {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 99999;
+        }
+        .alert {
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+        }
+        .alert-error { background: #f44336; color: white; }
+        .alert-info { background: #2196f3; color: white; }
+    </style>
+</head>
+<body>
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <div class="verify-container">
+        <div style="font-size: 64px;">📱🔐</div>
+        <h2 style="color: #2e7d32; margin: 20px 0;">Подтверждение входа</h2>
+        <p>Введите код, отправленный в Telegram</p>
+        
+        <form method="post">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="text" name="code" class="code-input" maxlength="6" autocomplete="off" autofocus required placeholder="000000">
+            <button type="submit">Подтвердить</button>
+        </form>
+        
+        <p style="margin-top: 20px; font-size: 12px; color: #666;">Код действителен 5 минут</p>
+    </div>
+    
+    <script>
+        document.querySelector('input[name="code"]').focus();
+        const codeInput = document.querySelector('input[name="code"]');
+        codeInput.addEventListener('input', function() {
+            if (this.value.length === 6) {
+                this.form.submit();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Ежедневный бонус -->
+<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 20px; margin-bottom: 20px;">
+    <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h3 style="color: #2e7d32; margin-bottom: 5px;">🎁 Ежедневный бонус</h3>
+            <p style="color: #666; font-size: 13px;">Заходи каждый день и получай всё больше Coin. Пропустишь день — серия сбросится!</p>
+        </div>
+        <!-- Прогресс streak -->
+        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            {% for day in range(1, 8) %}
+            <div style="text-align: center; width: 42px;">
+                <div style="width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px;
+                    background: {% if day <= bonus_streak %}linear-gradient(135deg, #4caf50, #2e7d32){% elif day == bonus_streak + 1 and can_claim_bonus %}linear-gradient(135deg, #ff9800, #f57c00){% else %}#e0e0e0{% endif %};
+                    color: {% if day <= bonus_streak or (day == bonus_streak + 1 and can_claim_bonus) %}white{% else %}#999{% endif %};">
+                    +{{ day }}
+                </div>
+                <div style="font-size: 10px; color: #999; margin-top: 3px;">д{{ day }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        <!-- Кнопка -->
+        <div style="text-align: center;">
+            {% if can_claim_bonus %}
+            <button id="claimBonusBtn" onclick="claimDailyBonus()"
+                style="background: linear-gradient(135deg, #ff9800, #f57c00); color: white; border: none; padding: 12px 24px; border-radius: 50px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                🎁 Забрать +{{ bonus_amount }} Coin
+            </button>
+            <p style="font-size: 11px; color: #666; margin-top: 5px;">День {{ (bonus_streak % 7) + 1 }} из 7</p>
+            {% else %}
+            <button disabled style="background: #e0e0e0; color: #999; border: none; padding: 12px 24px; border-radius: 50px; font-size: 16px; cursor: not-allowed;">
+                ✅ Получено сегодня
+            </button>
+            <p style="font-size: 11px; color: #666; margin-top: 5px;">Серия: {{ bonus_streak }} дней подряд</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+function claimDailyBonus() {
+    const btn = document.getElementById('claimBonusBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ Получаем...';
+
+    fetch('/claim_daily_bonus', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf_token, 'Content-Type': 'application/json' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            btn.textContent = '✅ +' + data.bonus + ' Coin!';
+            btn.style.background = 'linear-gradient(135deg, #4caf50, #2e7d32)';
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            alert(data.error || 'Ошибка');
+            btn.disabled = false;
+            btn.textContent = '🎁 Забрать бонус';
+        }
+    })
+    .catch(() => {
+        alert('Ошибка сервера');
+        btn.disabled = false;
+        btn.textContent = '🎁 Забрать бонус';
+    });
+}
+</script>
+
+<div id="garden" class="tab active">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+        <h2 style="color: white;">🌾 Мой огород ({{ grid_size }}x{{ grid_size }})</h2>
+        {% if grid_size < 6 %}
+        <form method="post" action="/expand_garden">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            {% if grid_size == 3 %}
+            <button type="submit" style="background: linear-gradient(135deg, #4caf50, #2e7d32); padding: 12px 24px; font-size: 16px; border: none; border-radius: 50px; color: white; cursor: pointer;">
+                🌱 Расширить огород до 4x4 (2100 Coin)
+            </button>
+            {% elif grid_size == 4 %}
+            <button type="submit" style="background: linear-gradient(135deg, #4caf50, #2e7d32); padding: 12px 24px; font-size: 16px; border: none; border-radius: 50px; color: white; cursor: pointer;">
+                🌱 Расширить огород до 5x5 (4500 Coin)
+            </button>
+            {% elif grid_size == 5 %}
+            <button type="submit" style="background: linear-gradient(135deg, #4caf50, #2e7d32); padding: 12px 24px; font-size: 16px; border: none; border-radius: 50px; color: white; cursor: pointer;">
+                🌱 Расширить огород до 6x6 (9900 Coin)
+            </button>
+            {% endif %}
+        </form>
+        {% else %}
+        <h3 style="color: gold;">✨ Максимальный размер огорода! ✨</h3>
+        {% endif %}
+    </div>
+    <div class="garden" style="display: grid; grid-template-columns: repeat({{ grid_size }}, 1fr); gap: 15px; margin-top: 20px;">
+        {% for i in range(total_cells) %}
+        <div class="cell" style="background: linear-gradient(135deg, #f5f5dc 0%, #fff8dc 100%); border-radius: 15px; padding: 15px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); transition: all 0.3s; animation: cellAppear 0.5s ease; position: relative; overflow: hidden; z-index: 1;">
+            <div style="font-size: 14px; font-weight: bold; color: #2c5e2e; margin-bottom: 5px;">📍 Участок {{ i+1 }}</div>
+            {% if garden[i] and garden[i].crop %}
+                <div style="font-size: 50px; margin: 10px 0; animation: bounce 2s ease infinite;">{{ vegetables[garden[i].crop].emoji }}</div>
+                <div style="font-size: 14px; font-weight: bold; color: {{ vegetables[garden[i].crop].color }};">
+                    {{ vegetables[garden[i].crop].name }}
+                </div>
+                <div style="font-size: 12px; color: #2e7d32; font-weight: bold; margin: 8px 0;">
+                    💵 {{ "%.8f"|format(vegetables[garden[i].crop].income * (1 + garden[i].upgrades.values()|sum)) }}/сек
+                </div>
+                {% if garden[i].upgrades %}
+                <div style="background: rgba(0,0,0,0.05); border-radius: 8px; padding: 8px; margin: 8px 0; font-size: 11px;">
+                    {% for key, val in garden[i].upgrades.items() %}
+                        <span style="display: inline-block; margin: 2px;">{{ upgrades[key].emoji }} +{{ (upgrades[key].multiplier*100)|int }}%</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div style="margin-top: 8px;">
+                    <form method="post" action="/upgrade/{{ i }}" style="display: inline-block;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <select name="upgrade" style="margin: 4px; padding: 6px 10px; border-radius: 8px; border: 1px solid #ddd; font-size: 11px;">
+                            {% for key, upgrade in upgrades.items() %}
+                                {% if key not in garden[i].upgrades %}
+                                <option value="{{ key }}">
+                                    {{ upgrade.emoji }} {{ upgrade.name }} (+{{ (upgrade.multiplier*100)|int }}%) - 
+                                    {% set price = (vegetables[garden[i].crop].income * upgrade.multiplier * 31536000 / upgrade.price_factor)|int %}
+                                    {{ price }} Coin
+                                </option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <button type="submit" style="background: linear-gradient(135deg, #ff9800, #f57c00); margin: 4px; padding: 6px 10px; border-radius: 8px; border: none; cursor: pointer; color: white;">⬆️ Купить</button>
+                    </form>
+                </div>
+            {% else %}
+                <div style="font-size: 50px; margin: 10px 0;">🌿</div>
+                <form method="post" action="/plant/{{ i }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <select name="crop" style="margin: 4px; padding: 6px 10px; border-radius: 8px; border: 1px solid #ddd;">
+                        {% for key, veg in vegetables.items() %}
+                        <option value="{{ key }}">{{ veg.emoji }} {{ veg.name }} - {{ veg.cost }} Coin</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" style="background: linear-gradient(135deg, #4caf50, #45a049); margin: 4px; padding: 6px 10px; border-radius: 8px; border: none; cursor: pointer; color: white;">🌱 Посадить</button>
+                </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div style="margin-top: 30px; padding: 20px; background: rgba(255,255,255,0.95); border-radius: 15px;">
+        <h3 style="color: #2e7d32;">🌱 Советы по ведению огорода</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-top: 15px;">
+            <div style="background: #e8f5e9; padding: 12px; border-radius: 10px;">
+                <span style="font-size: 20px;">💰</span>
+                <p style="margin-top: 5px;"><strong>Экономия</strong><br>Начинайте с дешевых культур (Морковь, Картофель), чтобы быстрее накопить на апгрейды</p>
+            </div>
+            <div style="background: #e8f5e9; padding: 12px; border-radius: 10px;">
+                <span style="font-size: 20px;">⚡</span>
+                <p style="margin-top: 5px;"><strong>Апгрейды</strong><br>Покупайте апгрейды на дорогие культуры — они дают больше прироста дохода</p>
+            </div>
+            <div style="background: #e8f5e9; padding: 12px; border-radius: 10px;">
+                <span style="font-size: 20px;">📈</span>
+                <p style="margin-top: 5px;"><strong>Расширение</strong><br>Расширяйте огород до 6x6 как можно быстрее — больше участков = больше дохода</p>
+            </div>
+            <div style="background: #e8f5e9; padding: 12px; border-radius: 10px;">
+                <span style="font-size: 20px;">🏚️</span>
+                <p style="margin-top: 5px;"><strong>Склад</strong><br>Не забывайте улучшать склад, чтобы хранить больше урожая</p>
+            </div>
+        </div>
+        <p style="margin-top: 15px; font-size: 12px; color: #666; text-align: center;">
+            💡 <strong>Совет:</strong> Урожай собирается автоматически на склад. Продавайте овощи когда цена выгодна!
+        </p>
+    </div>
+</div>
+{% endblock %}

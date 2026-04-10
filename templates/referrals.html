@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block content %}
+<div id="referrals" class="tab active">
+    <div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px;">
+        <h2 style="color: #2e7d32; margin-bottom: 20px;">👥 Реферальная система</h2>
+        
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 15px; padding: 30px; color: white; margin-bottom: 30px;">
+            <h3 style="margin-bottom: 15px;">✨ Приглашайте друзей и зарабатывайте!</h3>
+            <p>За каждого приглашенного друга вы получаете <strong>100 Coin</strong> единоразово!</p>
+            <p>Ваш друг получит <strong>200 Coin</strong> бонусом при регистрации!</p>
+        </div>
+        
+        <div style="background: #f5f5dc; border-radius: 15px; padding: 20px; margin-bottom: 30px;">
+            <h3 style="color: #2e7d32; margin-bottom: 15px;">🔗 Ваша реферальная ссылка:</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                <input type="text" id="referralLink" value="{{ referral_link }}" readonly style="flex: 1; padding: 12px; border: 2px solid #4caf50; border-radius: 10px; font-size: 14px;">
+                <button onclick="copyLink()" style="background: linear-gradient(135deg, #4caf50, #2e7d32); color: white; border: none; padding: 12px 24px; border-radius: 10px; cursor: pointer;">📋 Копировать</button>
+            </div>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #f5f5dc, #fff8dc); border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #2e7d32; margin-bottom: 15px;">📊 Ваши реферальные бонусы</h3>
+            <div style="font-size: 28px; font-weight: bold; color: #2e7d32;">+{{ "%.2f"|format(total_bonus) }} Coin</div>
+            <p style="color: #666;">Всего получено от приглашенных друзей</p>
+        </div>
+        
+        <div style="background: #f5f5dc; border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+            <h3 style="color: #2e7d32; margin-bottom: 15px;">👥 Ваши рефералы ({{ referrals|length }}):</h3>
+            
+            {% if referrals %}
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #2e7d32; color: white;">
+                            <th style="padding: 10px; text-align: left;">Игрок</th>
+                            <th style="padding: 10px; text-align: left;">Баланс</th>
+                            <th style="padding: 10px; text-align: left;">Дата регистрации</th>
+                          </tr>
+                    </thead>
+                    <tbody>
+                        {% for ref in referrals %}
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 10px;">👤 {{ ref.login }}</td>
+                            <td style="padding: 10px;">💰 {{ "%.2f"|format(ref.balance) }} Coin</td>
+                            <td style="padding: 10px;">📅 {{ ref.created_at|timestamp_to_date }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="placeholder" style="padding: 40px;">
+                <div style="font-size: 60px;">👥</div>
+                <p>У вас пока нет приглашенных друзей</p>
+                <p style="font-size: 14px; margin-top: 10px;">Поделитесь ссылкой, чтобы начать зарабатывать!</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div style="margin-top: 20px; background: #e8f5e9; border-radius: 15px; padding: 20px;">
+            <h3 style="color: #2e7d32;">📜 История начислений</h3>
+            {% if history %}
+            <div style="overflow-x: auto; margin-top: 10px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #4caf50; color: white;">
+                            <th style="padding: 8px; text-align: left;">Дата</th>
+                            <th style="padding: 8px; text-align: left;">Событие</th>
+                            <th style="padding: 8px; text-align: left;">Сумма</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in history %}
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <td style="padding: 8px;">{{ h.created_at|timestamp_to_datetime }}</td>
+                            <td style="padding: 8px;">Регистрация друга ({{ h.referred_login }})</td>
+                            <td style="padding: 8px; color: #2e7d32; font-weight: bold;">+{{ "%.0f"|format(h.bonus_amount) }} Coin</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p style="margin-top: 10px; color: #666;">История начислений пуста</p>
+            {% endif %}
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 15px;">
+            <p style="color: #2e7d32;">💡 <strong>Как это работает?</strong></p>
+            <ol style="margin-left: 20px; margin-top: 10px;">
+                <li>Отправьте ссылку другу</li>
+                <li>Друг регистрируется и получает 200 Coin бонуса (100 приветственных + 100 за переход)</li>
+                <li>Вы получаете 100 Coin за каждого приглашенного друга</li>
+                <li>Бонус начисляется сразу после регистрации друга!</li>
+            </ol>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyLink() {
+    const linkInput = document.getElementById('referralLink');
+    linkInput.select();
+    document.execCommand('copy');
+    
+    const btn = event.target;
+    const originalText = btn.textContent;
+    btn.textContent = '✅ Скопировано!';
+    setTimeout(() => {
+        btn.textContent = originalText;
+    }, 2000);
+}
+</script>
+{% endblock %}
