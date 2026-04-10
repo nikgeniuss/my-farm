@@ -429,6 +429,21 @@
             options.headers['X-CSRFToken'] = csrf_token;
             return fetch(url, options);
         };
+        
+        function updateBalances() {
+            fetch('/api/stats')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) return;
+                    const farmEl = document.querySelector('.farm-balance');
+                    const bonusEl = document.querySelector('.bonus-balance');
+                    const totalEl = document.querySelector('.total-balance');
+                    if (farmEl) farmEl.innerHTML = `🌾 ${data.farm_balance || 0} Coin <span class="badge">фермерский</span>`;
+                    if (bonusEl) bonusEl.innerHTML = `🎁 ${data.bonus_balance || 0} Coin <span class="badge">бонусный</span>`;
+                    if (totalEl) totalEl.innerHTML = `💰 ${(data.farm_balance + data.bonus_balance).toFixed(2)} Coin <span class="badge">всего</span>`;
+                })
+                .catch(() => {});
+        }
     </script>
 </head>
 <body>
@@ -462,15 +477,15 @@
                 {% if user %}
                 <div class="balances">
                     <div class="farm-balance">
-                        🌾 {{ "%.2f"|format(user.farm_balance) }} Coin
+                        🌾 {{ "%.2f"|format(user.farm_balance|default(0)) }} Coin
                         <span class="badge">фермерский</span>
                     </div>
                     <div class="bonus-balance">
-                        🎁 {{ "%.2f"|format(user.bonus_balance) }} Coin
+                        🎁 {{ "%.2f"|format(user.bonus_balance|default(0)) }} Coin
                         <span class="badge">бонусный</span>
                     </div>
                     <div class="total-balance">
-                        💰 {{ "%.2f"|format(user.farm_balance + user.bonus_balance) }} Coin
+                        💰 {{ "%.2f"|format((user.farm_balance|default(0)) + (user.bonus_balance|default(0))) }} Coin
                         <span class="badge">всего</span>
                     </div>
                 </div>
