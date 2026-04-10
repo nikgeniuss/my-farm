@@ -1602,7 +1602,10 @@ start_transaction_monitor()
 
 # Получаем реальный URL для админки
 railway_url = os.environ.get('RAILWAY_PUBLIC_DOMAIN', 'localhost:5000')
-admin_url = f"https://{railway_url}/{ADMIN_SECRET}/dashboard" if railway_url != 'localhost:5000' else f"http://{railway_url}/{ADMIN_SECRET}/dashboard"
+if railway_url != 'localhost:5000':
+    admin_url = f"https://{railway_url}/{ADMIN_SECRET}/dashboard"
+else:
+    admin_url = f"http://{railway_url}/{ADMIN_SECRET}/dashboard"
 
 print(f"\n" + "="*50)
 print(f"🔐 АДМИН-ПАНЕЛЬ:")
