@@ -797,17 +797,6 @@ def login():
                 flash('❌ Нельзя приглашать себя с одного IP', 'error')
                 return redirect(url_for('login'))
             
-            def check_cycle(current_id, target_id, depth=0):
-                if depth > 3:
-                    return False
-                parent = conn.execute('SELECT referrer_id FROM users WHERE id = ?', (current_id,)).fetchone()
-                if parent and parent['referrer_id'] == target_id:
-                    return True
-                return parent and parent['referrer_id'] and check_cycle(parent['referrer_id'], target_id, depth+1)
-            
-            if referrer_id and check_cycle(referrer_id, None):
-                flash('❌ Обнаружен цикл в реферальной сети', 'error')
-                return redirect(url_for('login'))
             
             current_time = time.time()
             hashed_password = hash_password(password)
