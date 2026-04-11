@@ -1764,6 +1764,46 @@ def migrate_passwords():
             print(f"✅ Сконвертировано {changed} паролей")
     except Exception as e:
         print(f"Ошибка: {e}")
+        
+@app.route(f'/{ADMIN_SECRET}/sql', methods=['GET', 'POST'])
+@admin_required
+def admin_sql():
+    result = None
+    error = None
+    query = ''
+    
+    if request.method == 'POST':
+        query = request.form.get('query', '').strip()
+        if query:
+            try:
+                conn = get_db()
+                cursor = conn.execute(query)
+                
+                # Проверяем что за запрос
+                if query.lower().strip().startswith('select'):
+                    # SELECT — показываем результат
+                    rows = cursor.fetchall()
+                    if rows:
+                        columns = list(rows[0].keys())
+                        result = {
+                            'columns': columns,
+                            'rows': [list(row) for row in rows]
+                        }
+                    else:
+                        result = {'columns': [], 'rows': []}
+                else:
+                    # INSERT, UPDATE, DELETE — показываем сколько строк изменено
+                    conn.commit()
+                    result = {'affected': cursor.rowcount if hasattr(cursor, 'rowcount') else 'OK'}
+                
+            except Exception as e:
+                error = str(e)
+    
+    return render_template('admin/sql.html', 
+                          admin_secret=ADMIN_SECRET, 
+                          query=query, 
+                          result=result, 
+                          error=error)        
 
 # ============= ЗАПУСК =============
 
