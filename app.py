@@ -56,16 +56,16 @@ USDT_TON_WALLET = os.environ.get('TON_WALLET', "UQBm50IIyJefw4l9hINwm6GkC8DzxBVT
 TON_API = "https://toncenter.com/api/v2"
 
 VEGETABLES = {
-    'carrot': {'name': 'Морковь', 'cost': 10, 'income': 0.00000032, 'emoji': '🥕', 'color': '#FFA500'},
-    'potato': {'name': 'Картофель', 'cost': 50, 'income': 0.00000172, 'emoji': '🥔', 'color': '#D2691E'},
-    'onion': {'name': 'Лук', 'cost': 120, 'income': 0.00000435, 'emoji': '🧅', 'color': '#C41E3A'},
-    'cabbage': {'name': 'Капуста', 'cost': 300, 'income': 0.0000114, 'emoji': '🥬', 'color': '#2E8B57'},
-    'tomato': {'name': 'Томат', 'cost': 800, 'income': 0.0000321, 'emoji': '🍅', 'color': '#FF4500'},
-    'cucumber': {'name': 'Огурец', 'cost': 1500, 'income': 0.0000638, 'emoji': '🥒', 'color': '#3CB371'},
-    'pepper': {'name': 'Перец', 'cost': 3000, 'income': 0.000135, 'emoji': '🫑', 'color': '#32CD32'},
-    'eggplant': {'name': 'Баклажан', 'cost': 7000, 'income': 0.000334, 'emoji': '🍆', 'color': '#800080'},
-    'corn': {'name': 'Кукуруза', 'cost': 15000, 'income': 0.000762, 'emoji': '🌽', 'color': '#FFD700'},
-    'watermelon': {'name': 'Арбуз', 'cost': 30000, 'income': 0.001286, 'emoji': '🍉', 'color': '#32CD32'}
+    'carrot': {'name': 'Морковь', 'cost': 10, 'income': 0.00000064, 'emoji': '🥕', 'color': '#FFA500'},
+    'potato': {'name': 'Картофель', 'cost': 50, 'income': 0.00000350, 'emoji': '🥔', 'color': '#D2691E'},
+    'onion': {'name': 'Лук', 'cost': 120, 'income': 0.00000926, 'emoji': '🧅', 'color': '#C41E3A'},
+    'cabbage': {'name': 'Капуста', 'cost': 300, 'income': 0.0000257, 'emoji': '🥬', 'color': '#2E8B57'},
+    'tomato': {'name': 'Томат', 'cost': 800, 'income': 0.0000772, 'emoji': '🍅', 'color': '#FF4500'},
+    'cucumber': {'name': 'Огурец', 'cost': 1500, 'income': 0.000152, 'emoji': '🥒', 'color': '#3CB371'},
+    'pepper': {'name': 'Перец', 'cost': 3000, 'income': 0.000330, 'emoji': '🫑', 'color': '#32CD32'},
+    'eggplant': {'name': 'Баклажан', 'cost': 7000, 'income': 0.000818, 'emoji': '🍆', 'color': '#800080'},
+    'corn': {'name': 'Кукуруза', 'cost': 15000, 'income': 0.00186, 'emoji': '🌽', 'color': '#FFD700'},
+    'watermelon': {'name': 'Арбуз', 'cost': 30000, 'income': 0.00386, 'emoji': '🍉', 'color': '#32CD32'}
 }
 
 UPGRADES = {
@@ -87,8 +87,8 @@ def get_upgrade_price(crop_key, upgrade_key):
     upgrade_multiplier = UPGRADES[upgrade_key]['multiplier']
     price_factor = UPGRADES[upgrade_key]['price_factor']
     income_increase = crop_income * upgrade_multiplier
-    seconds_in_year = 31536000
-    price = (income_increase * seconds_in_year) / price_factor
+    seconds_in_4_5_months = 11664000  # 4.5 месяца
+    price = (income_increase * seconds_in_4_5_months) / price_factor
     return int(price)
 
 def generate_memo():
