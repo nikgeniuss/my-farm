@@ -87,8 +87,8 @@ def get_upgrade_price(crop_key, upgrade_key):
     upgrade_multiplier = UPGRADES[upgrade_key]['multiplier']
     price_factor = UPGRADES[upgrade_key]['price_factor']
     income_increase = crop_income * upgrade_multiplier
-    seconds_in_4_5_months = 11664000  # 4.5 месяца
-    price = (income_increase * seconds_in_4_5_months) / price_factor
+    seconds_in_3_5_months = 9072000  # 3.5 месяца (105 дней)
+    price = (income_increase * seconds_in_3_5_months) / price_factor
     return int(price)
 
 def generate_memo():
