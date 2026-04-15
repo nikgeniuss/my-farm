@@ -1,114 +1,26 @@
-{% extends "base.html" %}
-{% block content %}
-<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px;">
-    <h2 style="color: #2e7d32; margin-bottom: 20px; text-align: center;">💰 Кошелёк</h2>
+@app.route('/wallet')
+@login_required
+@check_banned
+@rate_limit(limit=30, window=60)
+def wallet():
+    user = get_user_with_stats(session['user_id'], skip_harvest=True)
+    if not user:
+        flash('❌ Ошибка загрузки данных', 'error')
+        return redirect(url_for('logout'))
     
-    <!-- Балансы -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
-        <div style="background: linear-gradient(135deg, #4caf50, #2e7d32); border-radius: 15px; padding: 20px; color: white; text-align: center;">
-            <div>🌾 Фермерский баланс</div>
-            <div style="font-size: 32px; font-weight: bold;">{{ "%.2f"|format(user.farm_balance) }} Coin</div>
-            <div style="font-size: 12px;">≈ {{ "%.2f"|format(user.farm_balance / 100) }} USDT</div>
-        </div>
-        <div style="background: linear-gradient(135deg, #ff9800, #f57c00); border-radius: 15px; padding: 20px; color: white; text-align: center;">
-            <div>🎁 Бонусный баланс</div>
-            <div style="font-size: 32px; font-weight: bold;">{{ "%.2f"|format(user.bonus_balance) }} Coin</div>
-            <div style="font-size: 12px;">Только для покупок</div>
-        </div>
-    </div>
+    conn = get_db()
+    deposits = conn.execute('SELECT id, amount, memo, status, created_at FROM deposit_requests WHERE user_id = ? ORDER BY created_at DESC', 
+                           (session['user_id'],)).fetchall()
+    withdraws = conn.execute('SELECT id, amount, wallet_address, status, created_at FROM withdraw_requests WHERE user_id = ? ORDER BY created_at DESC',
+                            (session['user_id'],)).fetchall()
+    conn.close()
     
-    <!-- Табы: Пополнить / Вывести -->
-    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <button onclick="showWalletTab('deposit')" id="tab-deposit" 
-                style="flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; background: linear-gradient(135deg, #4caf50, #2e7d32); color: white;">
-            💳 Пополнить
-        </button>
-        <button onclick="showWalletTab('withdraw')" id="tab-withdraw"
-                style="flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 16px; font-weight: bold; cursor: pointer; background: #e0e0e0; color: #333;">
-            💸 Вывести
-        </button>
-    </div>
-    
-    <!-- Вкладка ПОПОЛНИТЬ -->
-    <div id="tab-content-deposit">
-        <!-- Вставь сюда форму пополнения из deposit.html -->
-        <!-- Кошелёк, мемо, форма создания заявки -->
-    </div>
-    
-    <!-- Вкладка ВЫВЕСТИ -->
-    <div id="tab-content-withdraw" style="display: none;">
-        <!-- Вставь сюда форму вывода из withdraw.html -->
-    </div>
-    
-    <!-- История операций -->
-    <div style="margin-top: 30px;">
-        <h3 style="color: #2e7d32; margin-bottom: 15px;">📋 История операций</h3>
-        
-        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-            <button onclick="showHistoryTab('deposits')" id="hist-deposits"
-                    style="padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; background: #4caf50; color: white;">
-                Пополнения
-            </button>
-            <button onclick="showHistoryTab('withdraws')" id="hist-withdraws"
-                    style="padding: 8px 16px; border: none; border-radius: 20px; cursor: pointer; background: #e0e0e0; color: #333;">
-                Выводы
-            </button>
-        </div>
-        
-        <div id="history-deposits">
-            <!-- Таблица пополнений -->
-        </div>
-        <div id="history-withdraws" style="display: none;">
-            <!-- Таблица выводов -->
-        </div>
-    </div>
-</div>
-
-<script>
-function showWalletTab(tab) {
-    const depositBtn = document.getElementById('tab-deposit');
-    const withdrawBtn = document.getElementById('tab-withdraw');
-    const depositContent = document.getElementById('tab-content-deposit');
-    const withdrawContent = document.getElementById('tab-content-withdraw');
-    
-    if (tab === 'deposit') {
-        depositContent.style.display = 'block';
-        withdrawContent.style.display = 'none';
-        depositBtn.style.background = 'linear-gradient(135deg, #4caf50, #2e7d32)';
-        depositBtn.style.color = 'white';
-        withdrawBtn.style.background = '#e0e0e0';
-        withdrawBtn.style.color = '#333';
-    } else {
-        depositContent.style.display = 'none';
-        withdrawContent.style.display = 'block';
-        withdrawBtn.style.background = 'linear-gradient(135deg, #ff9800, #f57c00)';
-        withdrawBtn.style.color = 'white';
-        depositBtn.style.background = '#e0e0e0';
-        depositBtn.style.color = '#333';
-    }
-}
-
-function showHistoryTab(type) {
-    const depBtn = document.getElementById('hist-deposits');
-    const wdBtn = document.getElementById('hist-withdraws');
-    const depContent = document.getElementById('history-deposits');
-    const wdContent = document.getElementById('history-withdraws');
-    
-    if (type === 'deposits') {
-        depContent.style.display = 'block';
-        wdContent.style.display = 'none';
-        depBtn.style.background = '#4caf50';
-        depBtn.style.color = 'white';
-        wdBtn.style.background = '#e0e0e0';
-        wdBtn.style.color = '#333';
-    } else {
-        depContent.style.display = 'none';
-        wdContent.style.display = 'block';
-        wdBtn.style.background = '#ff9800';
-        wdBtn.style.color = 'white';
-        depBtn.style.background = '#e0e0e0';
-        depBtn.style.color = '#333';
-    }
-}
-</script>
-{% endblock %}
+    return render_template('wallet.html',
+                          user=user,
+                          deposits=deposits,
+                          withdraws=withdraws,
+                          wallet_address=USDT_TON_WALLET,
+                          income_per_sec=user['income_per_sec'],
+                          income_per_hour=user['income_per_hour'],
+                          income_per_day=user['income_per_day'],
+                          income_per_month=user['income_per_month'])
