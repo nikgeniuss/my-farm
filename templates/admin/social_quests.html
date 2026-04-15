@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #e91e63;">📱 Заявки на социальные задания</h2>
+        <a href="/{{ admin_secret }}/quests" style="background: #667eea; color: white; padding: 10px 20px; border-radius: 10px; text-decoration: none;">← К заданиям</a>
+    </div>
+    
+    {% if pending %}
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: #e91e63; color: white;">
+                    <th style="padding: 12px;">Пользователь</th>
+                    <th style="padding: 12px;">Задание</th>
+                    <th style="padding: 12px;">Статус</th>
+                    <th style="padding: 12px;">Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pending %}
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 12px;">👤 {{ p.login }} (ID: {{ p.user_id }})</td>
+                    <td style="padding: 12px;">{{ p.name }}</td>
+                    <td style="padding: 12px;">
+                        <span style="background: #ff9800; color: white; padding: 4px 10px; border-radius: 20px;">⏳ Ожидает</span>
+                    </td>
+                    <td style="padding: 12px;">
+                        <form method="post" action="/{{ admin_secret }}/social_quests/approve/{{ p.user_id }}/{{ p.quest_key }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" style="background: #4caf50; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;">✅ Подтвердить</button>
+                        </form>
+                        <form method="post" action="/{{ admin_secret }}/social_quests/reject/{{ p.user_id }}/{{ p.quest_key }}" style="display: inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" style="background: #f44336; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer;" onclick="return confirm('Отклонить заявку?');">❌ Отклонить</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 40px; color: #999;">
+        <div style="font-size: 60px;">📭</div>
+        <p>Нет заявок на проверку</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
