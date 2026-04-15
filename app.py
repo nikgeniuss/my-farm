@@ -1727,8 +1727,13 @@ def quests():
     
     # Цепочка овощей
     chain_quest = conn.execute('''
-        SELECT * FROM quest_templates WHERE quest_type = 'chain' AND is_active = 1
-    ''').fetchone()
+    SELECT * FROM quest_templates WHERE quest_type = 'chain' AND is_active = 1
+''').fetchone()
+
+if chain_quest:
+    chain_quest = dict(chain_quest)
+    if chain_quest['extra_data']:
+        chain_quest['extra_data'] = json.loads(chain_quest['extra_data'])
     
     chain_progress = None
     if chain_quest:
