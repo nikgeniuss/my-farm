@@ -8,7 +8,7 @@
         
         <div style="margin-bottom: 15px;">
             <label style="display: block; margin-bottom: 5px; font-weight: bold;">Тип задания:</label>
-            <select name="quest_type" required style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+            <select name="quest_type" id="quest_type" required onchange="toggleSocialFields()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
                 <option value="daily">📅 Ежедневное</option>
                 <option value="weekly">📆 Еженедельное</option>
                 <option value="achievement">🏅 Достижение</option>
@@ -42,6 +42,20 @@
             <input type="number" name="reward" required min="1" value="10" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
         </div>
         
+        <!-- Поля для социальных заданий -->
+        <div id="social_fields" style="display: none;">
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔗 Ссылка для проверки:</label>
+                <input type="text" name="verify_url" id="verify_url" placeholder="https://t.me/..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">💬 Подсказка для пользователя:</label>
+                <input type="text" name="input_hint" id="input_hint" placeholder="Ваш ник в Telegram" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                <small style="color: #666;">Что нужно ввести пользователю для проверки (ник, ссылка на профиль и т.д.)</small>
+            </div>
+        </div>
+        
         <div style="margin-bottom: 15px;">
             <label style="display: block; margin-bottom: 5px; font-weight: bold;">Доп. данные (JSON):</label>
             <textarea name="extra_data" rows="4" placeholder='{"steps": ["carrot", "potato"], "rewards": [10, 20]}' style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: monospace;"></textarea>
@@ -53,4 +67,12 @@
         </div>
     </form>
 </div>
+
+<script>
+function toggleSocialFields() {
+    const questType = document.getElementById('quest_type').value;
+    const socialFields = document.getElementById('social_fields');
+    socialFields.style.display = questType === 'social' ? 'block' : 'none';
+}
+</script>
 {% endblock %}
