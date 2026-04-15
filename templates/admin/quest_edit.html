@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #2e7d32; margin-bottom: 20px;">✏️ Редактировать задание #{{ quest.id }}</h2>
+    
+    <form method="post">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Тип:</label>
+            <input type="text" value="{{ quest.quest_type }}" disabled style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f5f5f5;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Ключ:</label>
+            <input type="text" value="{{ quest.quest_key }}" disabled style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #f5f5f5;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Название:</label>
+            <input type="text" name="name" required value="{{ quest.name }}" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Описание:</label>
+            <textarea name="description" rows="3" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">{{ quest.description or '' }}</textarea>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Цель:</label>
+            <input type="number" name="target" required min="1" value="{{ quest.target }}" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Награда (Coin):</label>
+            <input type="number" name="reward" required min="1" value="{{ quest.reward }}" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Доп. данные (JSON):</label>
+            <textarea name="extra_data" rows="4" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: monospace;">{{ quest.extra_data or '' }}</textarea>
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Активно:</label>
+            <select name="is_active" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                <option value="1" {% if quest.is_active %}selected{% endif %}>✅ Да</option>
+                <option value="0" {% if not quest.is_active %}selected{% endif %}>❌ Нет</option>
+            </select>
+        </div>
+        
+        <div style="display: flex; gap: 10px;">
+            <button type="submit" style="background: #4caf50; color: white; border: none; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-size: 16px;">💾 Сохранить</button>
+            <a href="/{{ admin_secret }}/quests" style="background: #999; color: white; padding: 12px 24px; border-radius: 10px; text-decoration: none;">Отмена</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
