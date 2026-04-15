@@ -1334,6 +1334,327 @@ def wallet():
                           income_per_day=user['income_per_day'],
                           income_per_month=user['income_per_month'])
 
+@app.route('/quests')
+@login_required
+@check_banned
+@rate_limit(limit=30, window=60)
+def quests():
+    user = get_user_with_stats(session['user_id'], skip_harvest=True)
+    if not user:
+        flash('❌ Ошибка загрузки данных', 'error')
+        return redirect(url_for('logout'))
+    
+    conn = get_db()
+    now = time.time()
+    
+    # Активный сезон
+    season = get_active_season()
+    season_pass = None
+    if season:
+        season_pass = get_user_season_pass(session['user_id'], season['season_id'])
+    
+    # Ежедневные задания
+    daily_quests = conn.execute('''
+        SELECT qt.*, uq.progress, uq.completed, uq.claimed 
+        FROM quest_templates qt
+        LEFT JOIN user_quests uq ON qt.quest_key = uq.quest_key AND uq.user_id = ?
+        WHERE qt.quest_type = 'daily' AND qt.is_active = 1
+    ''', (session['user_id'],)).fetchall()
+    
+    # Еженедельные задания
+    weekly_quests = conn.execute('''
+        SELECT qt.*, uq.progress, uq.completed, uq.claimed 
+        FROM quest_templates qt
+        LEFT JOIN user_quests uq ON qt.quest_key = uq.quest_key AND uq.user_id = ?
+        WHERE qt.quest_type = 'weekly' AND qt.is_active = 1
+    ''', (session['user_id'],)).fetchall()
+    
+    # Достижения
+    achievements = conn.execute('''
+        SELECT qt.*, ua.completed, ua.claimed, ua.completed_at
+        FROM quest_templates qt
+        LEFT JOIN user_achievements ua ON qt.quest_key = ua.achievement_key AND ua.user_id = ?
+        WHERE qt.quest_type = 'achievement' AND qt.is_active = 1
+        ORDER BY qt.id
+    ''', (session['user_id'],)).fetchall()
+    
+    # Цепочка овощей
+    chain_quest = conn.execute('''
+        SELECT * FROM quest_templates WHERE quest_type = 'chain' AND is_active = 1
+    ''').fetchone()
+    
+    chain_progress = None
+    if chain_quest:
+        chain_progress = conn.execute('''
+            SELECT * FROM user_chain_quests WHERE user_id = ? AND chain_key = ?
+        ''', (session['user_id'], chain_quest['quest_key'])).fetchone()
+        
+        if not chain_progress:
+            conn.execute('''
+                INSERT INTO user_chain_quests (user_id, chain_key, current_step)
+                VALUES (?, ?, 0)
+            ''', (session['user_id'], chain_quest['quest_key']))
+            conn.commit()
+            chain_progress = conn.execute('''
+                SELECT * FROM user_chain_quests WHERE user_id = ? AND chain_key = ?
+            ''', (session['user_id'], chain_quest['quest_key'])).fetchone()
+    
+    # Социальные задания
+    social_quests = conn.execute('''
+        SELECT qt.*, usq.status, usq.claimed
+        FROM quest_templates qt
+        LEFT JOIN user_social_quests usq ON qt.quest_key = usq.quest_key AND usq.user_id = ?
+        WHERE qt.quest_type = 'social' AND qt.is_active = 1
+    ''', (session['user_id'],)).fetchall()
+    
+    # Статистика для прогресс-баров
+    daily_total = len(daily_quests)
+    daily_completed = sum(1 for q in daily_quests if q['completed'])
+    
+    weekly_total = len(weekly_quests)
+    weekly_completed = sum(1 for q in weekly_quests if q['completed'])
+    
+    achievements_total = len(achievements)
+    achievements_completed = sum(1 for a in achievements if a['completed'])
+    
+    conn.close()
+    
+    return render_template('quests.html',
+                          user=user,
+                          season=season,
+                          season_pass=season_pass,
+                          daily_quests=daily_quests,
+                          weekly_quests=weekly_quests,
+                          achievements=achievements,
+                          chain_quest=chain_quest,
+                          chain_progress=chain_progress,
+                          social_quests=social_quests,
+                          daily_total=daily_total,
+                          daily_completed=daily_completed,
+                          weekly_total=weekly_total,
+                          weekly_completed=weekly_completed,
+                          achievements_total=achievements_total,
+                          achievements_completed=achievements_completed,
+                          now=now,
+                          income_per_sec=user['income_per_sec'],
+                          income_per_hour=user['income_per_hour'],
+                          income_per_day=user['income_per_day'],
+                          income_per_month=user['income_per_month'])
+
+@app.route('/claim_quest_reward', methods=['POST'])
+@login_required
+@check_banned
+def claim_quest_reward():
+    data = request.get_json()
+    quest_type = data.get('quest_type')
+    quest_key = data.get('quest_key')
+    
+    if not quest_type or not quest_key:
+        return jsonify({'success': False, 'error': 'Неверные данные'})
+    
+    conn = get_db()
+    user_id = session['user_id']
+    reward = 0
+    
+    try:
+        if quest_type in ['daily', 'weekly']:
+            quest = conn.execute('''
+                SELECT * FROM user_quests WHERE user_id = ? AND quest_key = ? AND completed = 1 AND claimed = 0
+            ''', (user_id, quest_key)).fetchone()
+            
+            if not quest:
+                return jsonify({'success': False, 'error': 'Задание не выполнено или награда уже получена'})
+            
+            template = conn.execute('SELECT reward FROM quest_templates WHERE quest_key = ?', (quest_key,)).fetchone()
+            reward = template['reward']
+            
+            conn.execute('UPDATE user_quests SET claimed = 1 WHERE id = ?', (quest['id'],))
+            conn.execute('UPDATE users SET bonus_balance = bonus_balance + ? WHERE id = ?', (reward, user_id))
+            
+            # Бонус за все ежедневные/еженедельные
+            if quest_type == 'daily':
+                all_daily = conn.execute('''
+                    SELECT COUNT(*) as total FROM quest_templates WHERE quest_type = 'daily' AND is_active = 1
+                ''').fetchone()['total']
+                claimed_daily = conn.execute('''
+                    SELECT COUNT(*) as total FROM user_quests WHERE user_id = ? AND claimed = 1
+                ''', (user_id,)).fetchone()['total']
+                
+                if claimed_daily == all_daily:
+                    conn.execute('UPDATE users SET bonus_balance = bonus_balance + 30 WHERE id = ?', (user_id,))
+                    reward += 30
+            
+            elif quest_type == 'weekly':
+                all_weekly = conn.execute('''
+                    SELECT COUNT(*) as total FROM quest_templates WHERE quest_type = 'weekly' AND is_active = 1
+                ''').fetchone()['total']
+                claimed_weekly = conn.execute('''
+                    SELECT COUNT(*) as total FROM user_quests WHERE user_id = ? AND claimed = 1
+                ''', (user_id,)).fetchone()['total']
+                
+                if claimed_weekly == all_weekly:
+                    conn.execute('UPDATE users SET bonus_balance = bonus_balance + 200 WHERE id = ?', (user_id,))
+                    reward += 200
+        
+        elif quest_type == 'achievement':
+            ach = conn.execute('''
+                SELECT * FROM user_achievements WHERE user_id = ? AND achievement_key = ? AND completed = 1 AND claimed = 0
+            ''', (user_id, quest_key)).fetchone()
+            
+            if not ach:
+                return jsonify({'success': False, 'error': 'Достижение не выполнено или награда уже получена'})
+            
+            template = conn.execute('SELECT reward FROM quest_templates WHERE quest_key = ?', (quest_key,)).fetchone()
+            reward = template['reward']
+            
+            conn.execute('UPDATE user_achievements SET claimed = 1 WHERE user_id = ? AND achievement_key = ?', (user_id, quest_key))
+            conn.execute('UPDATE users SET bonus_balance = bonus_balance + ? WHERE id = ?', (reward, user_id))
+        
+        elif quest_type == 'chain':
+            data = request.get_json()
+            step = data.get('step')
+            
+            chain = conn.execute('SELECT * FROM quest_templates WHERE quest_key = ?', (quest_key,)).fetchone()
+            if not chain:
+                return jsonify({'success': False, 'error': 'Цепочка не найдена'})
+            
+            extra = json.loads(chain['extra_data'])
+            rewards = extra['rewards']
+            
+            if step < 1 or step > len(rewards):
+                return jsonify({'success': False, 'error': 'Неверный шаг'})
+            
+            progress = conn.execute('''
+                SELECT * FROM user_chain_quests WHERE user_id = ? AND chain_key = ?
+            ''', (user_id, quest_key)).fetchone()
+            
+            claimed_steps = json.loads(progress['claimed_steps']) if progress else []
+            
+            if step in claimed_steps:
+                return jsonify({'success': False, 'error': 'Награда уже получена'})
+            
+            if progress['current_step'] < step:
+                return jsonify({'success': False, 'error': 'Шаг ещё не достигнут'})
+            
+            reward = rewards[step - 1]
+            claimed_steps.append(step)
+            
+            conn.execute('UPDATE user_chain_quests SET claimed_steps = ? WHERE user_id = ? AND chain_key = ?',
+                        (json.dumps(claimed_steps), user_id, quest_key))
+            conn.execute('UPDATE users SET bonus_balance = bonus_balance + ? WHERE id = ?', (reward, user_id))
+        
+        elif quest_type == 'season':
+            level = data.get('level')
+            is_premium = data.get('is_premium', False)
+            
+            season = get_active_season()
+            if not season:
+                return jsonify({'success': False, 'error': 'Нет активного сезона'})
+            
+            sp = get_user_season_pass(user_id, season['season_id'])
+            
+            if sp['level'] < level:
+                return jsonify({'success': False, 'error': 'Уровень не достигнут'})
+            
+            claimed_key = 'claimed_premium' if is_premium else 'claimed_free'
+            claimed = json.loads(sp[claimed_key])
+            
+            if level in claimed:
+                return jsonify({'success': False, 'error': 'Награда уже получена'})
+            
+            if is_premium and not sp['premium']:
+                return jsonify({'success': False, 'error': 'Премиум не куплен'})
+            
+            # Награды по уровням
+            free_rewards = {1: 5, 2: 10, 3: 15, 4: 20, 5: 25, 6: 30, 7: 35, 8: 40, 9: 50, 10: 100}
+            premium_rewards = {1: 15, 2: 30, 3: 45, 4: 60, 5: 75, 6: 90, 7: 105, 8: 120, 9: 150, 10: 300}
+            
+            reward = premium_rewards[level] if is_premium else free_rewards[level]
+            
+            claimed.append(level)
+            conn.execute(f'UPDATE user_season_pass SET {claimed_key} = ? WHERE user_id = ? AND season_id = ?',
+                        (json.dumps(claimed), user_id, season['season_id']))
+            conn.execute('UPDATE users SET bonus_balance = bonus_balance + ? WHERE id = ?', (reward, user_id))
+        
+        else:
+            return jsonify({'success': False, 'error': 'Неизвестный тип задания'})
+        
+        conn.commit()
+        
+        # Логируем
+        user_login = conn.execute('SELECT login FROM users WHERE id = ?', (user_id,)).fetchone()['login']
+        log_activity(user_login, 'quest', f'🎯 {user_login} получил награду за задание: {quest_key}')
+        
+        return jsonify({'success': True, 'reward': reward})
+        
+    except Exception as e:
+        conn.rollback()
+        return jsonify({'success': False, 'error': str(e)})
+    finally:
+        conn.close()
+
+@app.route('/buy_premium_pass', methods=['POST'])
+@login_required
+@check_banned
+def buy_premium_pass():
+    season = get_active_season()
+    if not season:
+        return jsonify({'success': False, 'error': 'Нет активного сезона'})
+    
+    conn = get_db()
+    user_id = session['user_id']
+    
+    sp = get_user_season_pass(user_id, season['season_id'])
+    
+    if sp['premium']:
+        return jsonify({'success': False, 'error': 'Премиум уже куплен'})
+    
+    user = conn.execute('SELECT bonus_balance, farm_balance FROM users WHERE id = ?', (user_id,)).fetchone()
+    cost = season['premium_cost']
+    
+    total_balance = user['bonus_balance'] + user['farm_balance']
+    
+    if total_balance < cost:
+        return jsonify({'success': False, 'error': 'Недостаточно средств'})
+    
+    # Списываем средства
+    if user['bonus_balance'] >= cost:
+        conn.execute('UPDATE users SET bonus_balance = bonus_balance - ? WHERE id = ?', (cost, user_id))
+    else:
+        remaining = cost - user['bonus_balance']
+        conn.execute('UPDATE users SET bonus_balance = 0, farm_balance = farm_balance - ? WHERE id = ?', (remaining, user_id))
+    
+    conn.execute('UPDATE user_season_pass SET premium = 1 WHERE user_id = ? AND season_id = ?',
+                (user_id, season['season_id']))
+    conn.commit()
+    
+    user_login = conn.execute('SELECT login FROM users WHERE id = ?', (user_id,)).fetchone()['login']
+    log_activity(user_login, 'season_pass', f'⭐ {user_login} купил премиум-пропуск')
+    
+    return jsonify({'success': True, 'message': 'Премиум-пропуск активирован!'})
+
+@app.route('/check_social_quest', methods=['POST'])
+@login_required
+@check_banned
+def check_social_quest():
+    data = request.get_json()
+    quest_key = data.get('quest_key')
+    
+    conn = get_db()
+    user_id = session['user_id']
+    
+    # Здесь должна быть реальная проверка через API соцсетей
+    # Пока просто помечаем как ожидающее подтверждения
+    conn.execute('''
+        INSERT OR REPLACE INTO user_social_quests (user_id, quest_key, status)
+        VALUES (?, ?, 'pending')
+    ''', (user_id, quest_key))
+    conn.commit()
+    
+    return jsonify({'success': True, 'message': 'Заявка отправлена на проверку'})
+
+
+
 @app.route('/claim_daily_bonus', methods=['POST'])
 @login_required
 @check_banned
