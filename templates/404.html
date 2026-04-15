@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🌾 Страница не найдена</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e3c2c, #2a5a3a);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+        .error-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+        }
+        .error-emoji {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #e65100;
+            margin-bottom: 15px;
+            font-size: 28px;
+        }
+        p {
+            color: #666;
+            margin-bottom: 25px;
+            line-height: 1.6;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #4caf50, #2e7d32);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: transform 0.3s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        .links {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .link {
+            color: #2e7d32;
+            text-decoration: none;
+            font-size: 14px;
+        }
+        .link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-emoji">🌿❓</div>
+        <h1>404 — Страница не найдена</h1>
+        <p>Такой страницы не существует. Возможно, она была удалена или ты ошибся при вводе адреса.</p>
+        
+        <a href="/" class="btn">🌾 Вернуться в огород</a>
+        
+        <div class="links">
+            <a href="/profile" class="link">📊 Профиль</a>
+            <a href="/storage" class="link">📦 Склад</a>
+            <a href="/deposit" class="link">💳 Пополнить</a>
+            <a href="/about" class="link">ℹ️ О нас</a>
+        </div>
+    </div>
+</body>
+</html>
