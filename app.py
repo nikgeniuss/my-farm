@@ -336,6 +336,13 @@ def harvest_crops(user_id, retries=3):
                         conn.execute('DELETE FROM storage WHERE user_id = ? AND crop = ?', (user_id, crop))
 
             conn.commit()
+            
+            # Обновляем прогресс заданий по сбору урожая
+            total_harvested = sum(harvested_crops.values())
+            if total_harvested > 0:
+                update_quest_progress(user_id, 'daily', 'harvest', int(total_harvested))
+            
+            
             return total_income_per_sec
         except sqlite3.OperationalError as e:
             if "locked" in str(e) and attempt < retries - 1:
@@ -429,6 +436,176 @@ def get_referrals(user_id):
         referred_user = conn.execute('SELECT login FROM users WHERE id = ?', (h['referred_id'],)).fetchone()
         history_list.append({'referred_id': h['referred_id'], 'referred_login': referred_user['login'] if referred_user else 'Неизвестно', 'bonus_amount': h['bonus_amount'], 'created_at': h['created_at']})
     return referrals_list, history_list
+
+# ============= ФУНКЦИИ ДЛЯ ЗАДАНИЙ =============
+
+def get_active_season():
+    conn = get_db()
+    now = time.time()
+    season = conn.execute('''SELECT * FROM season_config 
+                             WHERE is_active = 1 AND starts_at <= ? AND ends_at >= ?''',
+                          (now, now)).fetchone()
+    return dict(season) if season else None
+
+def get_user_season_pass(user_id, season_id):
+    conn = get_db()
+    sp = conn.execute('SELECT * FROM user_season_pass WHERE user_id = ? AND season_id = ?',
+                      (user_id, season_id)).fetchone()
+    if not sp:
+        conn.execute('''INSERT INTO user_season_pass (user_id, season_id, xp, level) 
+                        VALUES (?, ?, 0, 1)''', (user_id, season_id))
+        conn.commit()
+        sp = conn.execute('SELECT * FROM user_season_pass WHERE user_id = ? AND season_id = ?',
+                          (user_id, season_id)).fetchone()
+    return dict(sp) if sp else None
+
+def get_xp_for_level(level):
+    xp_requirements = {
+        1: 100, 2: 150, 3: 225, 4: 340, 5: 510,
+        6: 765, 7: 1150, 8: 1725, 9: 2600
+    }
+    return xp_requirements.get(level, 0)
+
+def add_season_xp(user_id, xp_amount):
+    season = get_active_season()
+    if not season:
+        return
+    
+    sp = get_user_season_pass(user_id, season['season_id'])
+    new_xp = sp['xp'] + xp_amount
+    current_level = sp['level']
+    
+    while current_level < 10:
+        xp_needed = get_xp_for_level(current_level)
+        if new_xp >= xp_needed:
+            new_xp -= xp_needed
+            current_level += 1
+        else:
+            break
+    
+    conn = get_db()
+    conn.execute('UPDATE user_season_pass SET xp = ?, level = ? WHERE user_id = ? AND season_id = ?',
+                 (new_xp, current_level, user_id, season['season_id']))
+    conn.commit()
+    
+    return current_level
+
+def update_quest_progress(user_id, quest_type, action, value=1):
+    conn = get_db()
+    now = time.time()
+    
+    if quest_type in ['daily', 'weekly']:
+        templates = conn.execute('''SELECT * FROM quest_templates 
+                                    WHERE quest_type = ? AND is_active = 1''',
+                                 (quest_type,)).fetchall()
+        
+        for tpl in templates:
+            tpl = dict(tpl)
+            
+            if action not in tpl['quest_key']:
+                continue
+            
+            user_quest = conn.execute('''SELECT * FROM user_quests 
+                                         WHERE user_id = ? AND quest_key = ?''',
+                                      (user_id, tpl['quest_key'])).fetchone()
+            
+            if not user_quest:
+                if quest_type == 'daily':
+                    expires_at = now + 86400
+                else:
+                    days_to_monday = 7 - datetime.now().weekday()
+                    if days_to_monday == 7:
+                        days_to_monday = 0
+                    expires_at = now + days_to_monday * 86400
+                
+                conn.execute('''INSERT INTO user_quests (user_id, quest_key, progress, created_at, expires_at) 
+                                VALUES (?, ?, ?, ?, ?)''',
+                             (user_id, tpl['quest_key'], value, now, expires_at))
+            else:
+                user_quest = dict(user_quest)
+                if not user_quest['completed']:
+                    new_progress = min(user_quest['progress'] + value, tpl['target'])
+                    completed = 1 if new_progress >= tpl['target'] else 0
+                    conn.execute('UPDATE user_quests SET progress = ?, completed = ? WHERE id = ?',
+                                 (new_progress, completed, user_quest['id']))
+    
+    elif quest_type == 'achievement':
+        templates = conn.execute('''SELECT * FROM quest_templates 
+                                    WHERE quest_type = ? AND is_active = 1''',
+                                 ('achievement',)).fetchall()
+        
+        for tpl in templates:
+            tpl = dict(tpl)
+            if action not in tpl['quest_key']:
+                continue
+            
+            ach = conn.execute('SELECT * FROM user_achievements WHERE user_id = ? AND achievement_key = ?',
+                               (user_id, tpl['quest_key'])).fetchone()
+            
+            if not ach:
+                conn.execute('''INSERT INTO user_achievements (user_id, achievement_key, progress) 
+                                VALUES (?, ?, ?)''',
+                             (user_id, tpl['quest_key'], value))
+            else:
+                ach = dict(ach)
+                if not ach['completed']:
+                    new_progress = min(ach['progress'] + value, tpl['target'])
+                    completed = 1 if new_progress >= tpl['target'] else 0
+                    conn.execute('''UPDATE user_achievements 
+                                    SET progress = ?, completed = ?, completed_at = ? 
+                                    WHERE user_id = ? AND achievement_key = ?''',
+                                 (new_progress, completed, now if completed else None,
+                                  user_id, tpl['quest_key']))
+    
+    conn.commit()
+
+def update_chain_quest(user_id, crop_key):
+    conn = get_db()
+    
+    chain = conn.execute('''
+        SELECT * FROM quest_templates 
+        WHERE quest_type = 'chain' AND is_active = 1
+    ''').fetchone()
+    
+    if not chain:
+        conn.close()
+        return
+    
+    chain = dict(chain)
+    extra = json.loads(chain['extra_data'])
+    steps = extra['steps']
+    
+    progress = conn.execute('''
+        SELECT * FROM user_chain_quests 
+        WHERE user_id = ? AND chain_key = ?
+    ''', (user_id, chain['quest_key'])).fetchone()
+    
+    if not progress:
+        conn.execute('''
+            INSERT INTO user_chain_quests (user_id, chain_key, current_step)
+            VALUES (?, ?, 0)
+        ''', (user_id, chain['quest_key']))
+        conn.commit()
+        progress = conn.execute('''
+            SELECT * FROM user_chain_quests 
+            WHERE user_id = ? AND chain_key = ?
+        ''', (user_id, chain['quest_key'])).fetchone()
+    
+    progress = dict(progress)
+    current_step = progress['current_step']
+    
+    if current_step < len(steps) and steps[current_step] == crop_key:
+        conn.execute('''
+            UPDATE user_chain_quests 
+            SET current_step = current_step + 1 
+            WHERE user_id = ? AND chain_key = ?
+        ''', (user_id, chain['quest_key']))
+        conn.commit()
+        
+        if current_step + 1 == 10:
+            update_quest_progress(user_id, 'achievement', 'all_vegs', 10)
+    
+    conn.close()
 
 # ============= ЕЖЕДНЕВНЫЙ БОНУС =============
 
@@ -532,6 +709,10 @@ def claim_daily_bonus_db(user_id):
 
         conn.execute('UPDATE users SET bonus_balance = bonus_balance + ? WHERE id = ?', (bonus_amount, user_id))
         conn.commit()
+
+        # Обновляем прогресс заданий
+        update_quest_progress(user_id, 'daily', 'login', 1)
+        add_season_xp(user_id, 10)  # +10 XP за вход
 
         return {'success': True, 'bonus': bonus_amount, 'streak': new_streak}
 
@@ -839,6 +1020,8 @@ def login():
                 conn.execute('UPDATE users SET bonus_balance = bonus_balance + 100 WHERE id = ?', (referrer_id,))
                 conn.execute('INSERT INTO referral_history (referrer_id, referred_id, bonus_amount, created_at) VALUES (?, ?, ?, ?)',
                             (referrer_id, user_id, 100, current_time))
+                update_quest_progress(referrer_id, 'achievement', 'referral', 1)
+                add_season_xp(referrer_id, 50)  # +50 XP рефереру
                 log_activity(login, 'referral', f'🎉 {login} зарегистрировался по реферальной ссылке')
                 flash('🎉 Аккаунт создан! Получено 200 Coin (бонусные)!', 'success')
             else:
@@ -945,6 +1128,12 @@ def plant(cell_id):
                     (session['user_id'], cell_id, crop_key, '{}', time.time()))
         conn.commit()
 
+        update_quest_progress(session['user_id'], 'daily', 'plant', 1)
+        update_quest_progress(session['user_id'], 'weekly', 'plant', 1)
+        update_quest_progress(session['user_id'], 'achievement', 'plant', 1)
+        update_chain_quest(session['user_id'], crop_key)
+        add_season_xp(session['user_id'], 10)  # +10 XP за посадку
+
         user_login = conn.execute('SELECT login FROM users WHERE id = ?', (session['user_id'],)).fetchone()['login']
         log_activity(user_login, 'plant', f'🌱 {user_login} посадил {crop_name}')
         flash(f'✅ {crop_name} посажен! -{crop_cost} Coin', 'success')
@@ -993,6 +1182,11 @@ def upgrade(cell_id):
         conn.execute('UPDATE garden SET upgrades_json = ? WHERE user_id = ? AND cell_id = ?',
                     (json.dumps(upgrades), session['user_id'], cell_id))
         conn.commit()
+
+        update_quest_progress(session['user_id'], 'daily', 'upgrade', 1)
+        update_quest_progress(session['user_id'], 'weekly', 'upgrade', 1)
+        update_quest_progress(session['user_id'], 'achievement', 'upgrade', 1)
+        add_season_xp(session['user_id'], 20)  # +20 XP за апгрейд
         log_activity(upgrade_user_login, 'upgrade', f'⚡ {upgrade_user_login} купил апгрейд {upgrade_name}')
         flash(f'✨ {upgrade_name} куплен! +{upgrade_multiplier*100:.0f}%! -{upgrade_cost} Coin', 'success')
     else:
@@ -1034,6 +1228,9 @@ def expand_garden():
             conn.execute('INSERT OR IGNORE INTO garden (user_id, cell_id, crop, upgrades_json, last_harvest) VALUES (?, ?, ?, ?, ?)',
                         (session['user_id'], cell_id, None, '{}', current_time))
         conn.commit()
+        update_quest_progress(session['user_id'], 'weekly', 'expand', 1)
+        update_quest_progress(session['user_id'], 'achievement', 'garden', new_size)
+        add_season_xp(session['user_id'], 50)  # +50 XP за расширение
         log_activity(expand_user_login, 'expand', f'🌾 {expand_user_login} расширил огород до {new_size}x{new_size}')
         flash(f'🌾 Огород расширен до {new_size}x{new_size}! -{expand_cost} Coin', 'success')
     else:
@@ -1085,6 +1282,10 @@ def sell_crop(crop):
     
     conn.execute('UPDATE users SET farm_balance = farm_balance + ? WHERE id = ?', (total_earned, session['user_id']))
     conn.commit()
+
+    update_quest_progress(session['user_id'], 'daily', 'sell', int(quantity))
+    update_quest_progress(session['user_id'], 'weekly', 'sell', int(quantity))
+    update_quest_progress(session['user_id'], 'achievement', 'sell', int(quantity))
     
     flash(f'💰 Продано {quantity:.8f} {VEGETABLES[crop]["name"]} за {total_earned:.8f} Coin (зачислено на фермерский баланс)', 'success')
     return redirect(url_for('storage'))
@@ -1111,6 +1312,10 @@ def sell_all_crop(crop):
     conn.execute('DELETE FROM storage WHERE user_id = ? AND crop = ?', (session['user_id'], crop))
     conn.execute('UPDATE users SET farm_balance = farm_balance + ? WHERE id = ?', (total_earned, session['user_id']))
     conn.commit()
+
+    update_quest_progress(session['user_id'], 'daily', 'sell', int(quantity))
+    update_quest_progress(session['user_id'], 'weekly', 'sell', int(quantity))
+    update_quest_progress(session['user_id'], 'achievement', 'sell', int(quantity))
     
     flash(f'💰 Продано всё {VEGETABLES[crop]["name"]} ({quantity:.8f} шт) за {total_earned:.8f} Coin (зачислено на фермерский баланс)', 'success')
     return redirect(url_for('storage'))
@@ -1160,6 +1365,9 @@ def upgrade_storage():
         
         conn.execute('UPDATE users SET storage_level = ? WHERE id = ?', (current_level + 1, session['user_id']))
         conn.commit()
+        update_quest_progress(session['user_id'], 'weekly', 'storage', 1)
+        update_quest_progress(session['user_id'], 'achievement', 'storage', current_level + 1)
+        add_season_xp(session['user_id'], 30)  # +30 XP за улучшение склада
         flash(f'🏚️ Склад улучшен до {current_level + 1} уровня! Вместимость: {new_capacity:.0f} шт. -{upgrade_cost} Coin', 'success')
     else:
         flash(f'❌ Недостаточно средств! Нужно {upgrade_cost} Coin', 'error')
