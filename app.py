@@ -1727,13 +1727,13 @@ def quests():
     
     # Цепочка овощей
     chain_quest = conn.execute('''
-    SELECT * FROM quest_templates WHERE quest_type = 'chain' AND is_active = 1
-''').fetchone()
-
-if chain_quest:
-    chain_quest = dict(chain_quest)
-    if chain_quest['extra_data']:
-        chain_quest['extra_data'] = json.loads(chain_quest['extra_data'])
+        SELECT * FROM quest_templates WHERE quest_type = 'chain' AND is_active = 1
+    ''').fetchone()
+    
+    if chain_quest:
+        chain_quest = dict(chain_quest)
+        if chain_quest['extra_data']:
+            chain_quest['extra_data'] = json.loads(chain_quest['extra_data'])
     
     chain_progress = None
     if chain_quest:
@@ -1759,13 +1759,11 @@ if chain_quest:
         WHERE qt.quest_type = 'social' AND qt.is_active = 1
     ''', (session['user_id'],)).fetchall()
     
-    # Статистика для прогресс-баров
+    # Статистика
     daily_total = len(daily_quests)
     daily_completed = sum(1 for q in daily_quests if q['completed'])
-    
     weekly_total = len(weekly_quests)
     weekly_completed = sum(1 for q in weekly_quests if q['completed'])
-    
     achievements_total = len(achievements)
     achievements_completed = sum(1 for a in achievements if a['completed'])
     
