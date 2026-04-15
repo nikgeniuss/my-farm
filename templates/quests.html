@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px;">
+    <h2 style="color: #2e7d32; margin-bottom: 20px; text-align: center;">🎯 Задания</h2>
+    
+    <!-- Сезонный пропуск -->
+    {% if season %}
+    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; padding: 25px; color: white; margin-bottom: 30px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h2 style="margin-bottom: 5px;">🏆 {{ season.name }}</h2>
+                <p>Завершится: {{ season.ends_at|timestamp_to_date }}</p>
+                {% if season_pass %}
+                <div style="margin-top: 15px;">
+                    <div>Уровень {{ season_pass.level }} / 10</div>
+                    <div style="background: rgba(255,255,255,0.3); border-radius: 10px; height: 10px; width: 200px; margin-top: 5px;">
+                        <div style="background: #ffd700; height: 10px; border-radius: 10px; width: {{ (season_pass.level / 10 * 100)|int }}%;"></div>
+                    </div>
+                    <div style="margin-top: 5px;">✨ {{ season_pass.xp }} XP</div>
+                </div>
+                {% endif %}
+            </div>
+            <div style="text-align: center;">
+                {% if season_pass and not season_pass.premium %}
+                <button onclick="buyPremiumPass()" style="background: #ffd700; color: #333; border: none; padding: 15px 30px; border-radius: 15px; font-size: 18px; font-weight: bold; cursor: pointer;">
+                    ⭐ Купить Премиум (500 Coin)
+                </button>
+                {% elif season_pass and season_pass.premium %}
+                <span style="background: #ffd700; color: #333; padding: 15px 30px; border-radius: 15px; font-size: 18px; font-weight: bold;">
+                    ⭐ Премиум активен
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Уровни сезона -->
+        <div style="display: flex; gap: 5px; margin-top: 20px; overflow-x: auto; padding-bottom: 10px;">
+            {% for level in range(1, 11) %}
+            {% set free_rewards = {1:5, 2:10, 3:15, 4:20, 5:25, 6:30, 7:35, 8:40, 9:50, 10:100} %}
+            {% set premium_rewards = {1:15, 2:30, 3:45, 4:60, 5:75, 6:90, 7:105, 8:120, 9:150, 10:300} %}
+            <div style="min-width: 90px; background: {{ 'rgba(255,215,0,0.3)' if season_pass and season_pass.level >= level else 'rgba(255,255,255,0.1)' }}; border-radius: 10px; padding: 10px; text-align: center;">
+                <div style="font-weight: bold;">Ур. {{ level }}</div>
+                <div style="font-size: 12px; margin: 5px 0;">🎁 {{ free_rewards[level] }}</div>
+                <div style="font-size: 12px; color: #ffd700;">⭐ {{ premium_rewards[level] }}</div>
+                {% if season_pass and season_pass.level >= level %}
+                <button onclick="claimSeasonReward({{ level }}, false)" style="margin-top: 5px; padding: 3px 8px; font-size: 11px; background: #4caf50; color: white; border: none; border-radius: 5px; cursor: pointer;">🎁</button>
+                {% if season_pass.premium %}
+                <button onclick="claimSeasonReward({{ level }}, true)" style="margin-top: 5px; padding: 3px 8px; font-size: 11px; background: #ffd700; color: #333; border: none; border-radius: 5px; cursor: pointer;">⭐</button>
+                {% endif %}
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Табы -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+        <button onclick="showQuestTab('daily')" id="tab-daily" class="quest-tab active-tab" style="padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; background: #4caf50; color: white;">
+            📅 Ежедневные ({{ daily_completed }}/{{ daily_total }})
+        </button>
+        <button onclick="showQuestTab('weekly')" id="tab-weekly" class="quest-tab" style="padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; background: #e0e0e0; color: #333;">
+            📆 Еженедельные ({{ weekly_completed }}/{{ weekly_total }})
+        </button>
+        <button onclick="showQuestTab('chain')" id="tab-chain" class="quest-tab" style="padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; background: #e0e0e0; color: #333;">
+            🌽 Цепочка овощей
+        </button>
+        <button onclick="showQuestTab('achievements')" id="tab-achievements" class="quest-tab" style="padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; background: #e0e0e0; color: #333;">
+            🏅 Достижения ({{ achievements_completed }}/{{ achievements_total }})
+        </button>
+        <button onclick="showQuestTab('social')" id="tab-social" class="quest-tab" style="padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; font-weight: bold; background: #e0e0e0; color: #333;">
+            📱 Социальные
+        </button>
+    </div>
+    
+    <!-- Ежедневные задания -->
+    <div id="content-daily" class="quest-content">
+        <div style="display: grid; gap: 15px;">
+            {% for quest in daily_quests %}
+            <div style="background: #f5f5dc; border-radius: 15px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h3>{{ quest.name }}</h3>
+                    <p style="color: #666;">{{ quest.description }}</p>
+                    <div style="margin-top: 10px;">
+                        <div style="background: #e0e0e0; border-radius: 10px; height: 8px; width: 200px;">
+                            <div style="background: #4caf50; height: 8px; border-radius: 10px; width: {{ (quest.progress or 0) / quest.target * 100 }}%;"></div>
+                        </div>
+                        <span style="font-size: 12px;">{{ quest.progress or 0 }}/{{ quest.target }}</span>
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 24px; font-weight: bold; color: #ff9800;">+{{ quest.reward }} Coin</div>
+                    {% if quest.completed and not quest.claimed %}
+                    <button onclick="claimReward('daily', '{{ quest.quest_key }}')" style="margin-top: 10px; background: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">🎁 Забрать</button>
+                    {% elif quest.claimed %}
+                    <span style="color: #4caf50;">✅ Получено</span>
+                    {% else %}
+                    <span style="color: #999;">В процессе</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Еженедельные задания -->
+    <div id="content-weekly" class="quest-content" style="display: none;">
+        <div style="display: grid; gap: 15px;">
+            {% for quest in weekly_quests %}
+            <div style="background: #f5f5dc; border-radius: 15px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h3>{{ quest.name }}</h3>
+                    <p style="color: #666;">{{ quest.description }}</p>
+                    <div style="margin-top: 10px;">
+                        <div style="background: #e0e0e0; border-radius: 10px; height: 8px; width: 200px;">
+                            <div style="background: #2196f3; height: 8px; border-radius: 10px; width: {{ (quest.progress or 0) / quest.target * 100 }}%;"></div>
+                        </div>
+                        <span style="font-size: 12px;">{{ quest.progress or 0 }}/{{ quest.target }}</span>
+                    </div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 24px; font-weight: bold; color: #2196f3;">+{{ quest.reward }} Coin</div>
+                    {% if quest.completed and not quest.claimed %}
+                    <button onclick="claimReward('weekly', '{{ quest.quest_key }}')" style="margin-top: 10px; background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">🎁 Забрать</button>
+                    {% elif quest.claimed %}
+                    <span style="color: #4caf50;">✅ Получено</span>
+                    {% else %}
+                    <span style="color: #999;">В процессе</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Цепочка овощей -->
+    <div id="content-chain" class="quest-content" style="display: none;">
+        {% if chain_quest %}
+        {% set extra = chain_quest.extra_data|fromjson %}
+        {% set steps = extra.steps %}
+        {% set rewards = extra.rewards %}
+        {% set claimed = chain_progress.claimed_steps|fromjson if chain_progress else [] %}
+        <div style="display: flex; flex-direction: column; gap: 15px;">
+            {% for step in range(1, 11) %}
+            <div style="background: {{ '#e8f5e9' if chain_progress and chain_progress.current_step >= step else '#f5f5dc' }}; border-radius: 15px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h3>Шаг {{ step }}: {{ vegetables[steps[step-1]].emoji }} {{ vegetables[steps[step-1]].name }}</h3>
+                    <p style="color: #666;">Посадить {{ vegetables[steps[step-1]].name }}</p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 20px; font-weight: bold; color: #9c27b0;">+{{ rewards[step-1] }} Coin</div>
+                    {% if chain_progress and chain_progress.current_step >= step %}
+                        {% if step in claimed %}
+                        <span style="color: #4caf50;">✅ Получено</span>
+                        {% else %}
+                        <button onclick="claimChainReward('{{ chain_quest.quest_key }}', {{ step }})" style="margin-top: 10px; background: #9c27b0; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">🎁 Забрать</button>
+                        {% endif %}
+                    {% else %}
+                    <span style="color: #999;">🔒 Заблокировано</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Достижения -->
+    <div id="content-achievements" class="quest-content" style="display: none;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+            {% for ach in achievements %}
+            <div style="background: {{ '#fff3e0' if ach.completed else '#f5f5dc' }}; border-radius: 15px; padding: 20px;">
+                <h3>{{ ach.name }}</h3>
+                <p style="color: #666; font-size: 14px;">{{ ach.description }}</p>
+                <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-size: 12px; color: #999;">Прогресс: {{ ach.progress or 0 }}/{{ ach.target }}</span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 18px; font-weight: bold; color: #ff9800;">+{{ ach.reward }} Coin</div>
+                        {% if ach.completed and not ach.claimed %}
+                        <button onclick="claimReward('achievement', '{{ ach.quest_key }}')" style="margin-top: 5px; background: #ff9800; color: white; border: none; padding: 8px 15px; border-radius: 8px; cursor: pointer;">🎁 Забрать</button>
+                        {% elif ach.claimed %}
+                        <span style="color: #4caf50;">✅ Получено</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% if ach.completed %}
+                <div style="margin-top: 5px; font-size: 11px; color: #4caf50;">✓ Выполнено {{ ach.completed_at|timestamp_to_date }}</div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Социальные задания -->
+    <div id="content-social" class="quest-content" style="display: none;">
+        <div style="display: grid; gap: 15px;">
+            {% for quest in social_quests %}
+            <div style="background: #e3f2fd; border-radius: 15px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+                <div>
+                    <h3>{{ quest.name }}</h3>
+                    <p style="color: #666;">{{ quest.description }}</p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 20px; font-weight: bold; color: #e91e63;">+{{ quest.reward }} Coin</div>
+                    {% if not quest.status %}
+                    <button onclick="checkSocialQuest('{{ quest.quest_key }}')" style="margin-top: 10px; background: #e91e63; color: white; border: none; padding: 10px 20px; border-radius: 10px; cursor: pointer;">✅ Проверить</button>
+                    {% elif quest.status == 'pending' %}
+                    <span style="color: #ff9800;">⏳ На проверке</span>
+                    {% elif quest.claimed %}
+                    <span style="color: #4caf50;">✅ Получено</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<script>
+function showQuestTab(tabId) {
+    document.querySelectorAll('.quest-content').forEach(c => c.style.display = 'none');
+    document.querySelectorAll('.quest-tab').forEach(t => {
+        t.style.background = '#e0e0e0';
+        t.style.color = '#333';
+    });
+    
+    document.getElementById('content-' + tabId).style.display = 'block';
+    document.getElementById('tab-' + tabId).style.background = tabId === 'daily' ? '#4caf50' : 
+                                                              tabId === 'weekly' ? '#2196f3' : 
+                                                              tabId === 'chain' ? '#9c27b0' : 
+                                                              tabId === 'achievements' ? '#ff9800' : '#e91e63';
+    document.getElementById('tab-' + tabId).style.color = 'white';
+}
+
+function claimReward(type, key) {
+    fetch('/claim_quest_reward', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token
+        },
+        body: JSON.stringify({ quest_type: type, quest_key: key })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Получено +' + data.reward + ' Coin!');
+            location.reload();
+        } else {
+            alert('❌ ' + data.error);
+        }
+    });
+}
+
+function claimChainReward(key, step) {
+    fetch('/claim_quest_reward', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token
+        },
+        body: JSON.stringify({ quest_type: 'chain', quest_key: key, step: step })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Получено +' + data.reward + ' Coin!');
+            location.reload();
+        } else {
+            alert('❌ ' + data.error);
+        }
+    });
+}
+
+function claimSeasonReward(level, isPremium) {
+    fetch('/claim_quest_reward', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token
+        },
+        body: JSON.stringify({ quest_type: 'season', level: level, is_premium: isPremium })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Получено +' + data.reward + ' Coin!');
+            location.reload();
+        } else {
+            alert('❌ ' + data.error);
+        }
+    });
+}
+
+function buyPremiumPass() {
+    if (!confirm('Купить Премиум-пропуск за 500 Coin?')) return;
+    
+    fetch('/buy_premium_pass', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token
+        }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + data.error);
+        }
+    });
+}
+
+function checkSocialQuest(key) {
+    fetch('/check_social_quest', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrf_token
+        },
+        body: JSON.stringify({ quest_key: key })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ ' + data.message);
+            location.reload();
+        } else {
+            alert('❌ ' + data.error);
+        }
+    });
+}
+</script>
+
+<style>
+.quest-tab.active-tab {
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+</style>
+{% endblock %}
