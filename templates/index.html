@@ -141,7 +141,7 @@ function claimDailyBonus() {
                                 {% if key not in garden[i].upgrades %}
                                 <option value="{{ key }}">
                                     {{ upgrade.emoji }} {{ upgrade.name }} (+{{ (upgrade.multiplier*100)|int }}%) - 
-                                    {% set price = (vegetables[garden[i].crop].income * upgrade.multiplier * 31536000 / upgrade.price_factor)|int %}
+                                    {% set price = (vegetables[garden[i].crop].income * upgrade.multiplier * 9072000 / upgrade.price_factor)|int %}
                                     {{ price }} Coin
                                 </option>
                                 {% endif %}
