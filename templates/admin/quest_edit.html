@@ -36,6 +36,19 @@
             <input type="number" name="reward" required min="1" value="{{ quest.reward }}" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
         </div>
         
+        <!-- Поля для социальных заданий -->
+        {% if quest.quest_type == 'social' %}
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔗 Ссылка для проверки:</label>
+            <input type="text" name="verify_url" value="{{ quest.verify_url or '' }}" placeholder="https://t.me/..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        
+        <div style="margin-bottom: 15px;">
+            <label style="display: block; margin-bottom: 5px; font-weight: bold;">💬 Подсказка для пользователя:</label>
+            <input type="text" name="input_hint" value="{{ quest.input_hint or '' }}" placeholder="Ваш ник в Telegram" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+        </div>
+        {% endif %}
+        
         <div style="margin-bottom: 15px;">
             <label style="display: block; margin-bottom: 5px; font-weight: bold;">Доп. данные (JSON):</label>
             <textarea name="extra_data" rows="4" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; font-family: monospace;">{{ quest.extra_data or '' }}</textarea>
