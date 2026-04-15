@@ -239,7 +239,7 @@ def init_db():
         conn.execute("UPDATE users SET farm_balance = balance WHERE farm_balance = 0 AND balance > 0")
         conn.execute("UPDATE users SET bonus_balance = 0 WHERE bonus_balance IS NULL")
 
-        admin_count = conn.execute('SELECT COUNT(*) as count FROM users WHERE is_admin = 1').fetchone()[0]
+                admin_count = conn.execute('SELECT COUNT(*) as count FROM users WHERE is_admin = 1').fetchone()[0]
         if admin_count == 0:
             admin_login = 'admin'
             admin_password = hash_password('admin123')
@@ -253,8 +253,147 @@ def init_db():
             except:
                 pass
 
-        conn.commit()
+        # ============= ТАБЛИЦЫ ДЛЯ ЗАДАНИЙ =============
+        conn.execute('''CREATE TABLE IF NOT EXISTS quest_templates
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                         quest_type TEXT,
+                         quest_key TEXT UNIQUE,
+                         name TEXT,
+                         description TEXT,
+                         target INTEGER,
+                         reward INTEGER,
+                         reward_type TEXT DEFAULT 'coins',
+                         extra_data TEXT,
+                         is_active INTEGER DEFAULT 1)''')
 
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_quests
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                         user_id INTEGER,
+                         quest_key TEXT,
+                         progress INTEGER DEFAULT 0,
+                         completed INTEGER DEFAULT 0,
+                         claimed INTEGER DEFAULT 0,
+                         created_at REAL,
+                         expires_at REAL,
+                         FOREIGN KEY (user_id) REFERENCES users(id))''')
+
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_achievements
+                        (user_id INTEGER,
+                         achievement_key TEXT,
+                         progress INTEGER DEFAULT 0,
+                         completed INTEGER DEFAULT 0,
+                         claimed INTEGER DEFAULT 0,
+                         completed_at REAL,
+                         PRIMARY KEY (user_id, achievement_key))''')
+
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_chain_quests
+                        (user_id INTEGER,
+                         chain_key TEXT,
+                         current_step INTEGER DEFAULT 0,
+                         claimed_steps TEXT DEFAULT '[]',
+                         PRIMARY KEY (user_id, chain_key))''')
+
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_social_quests
+                        (user_id INTEGER,
+                         quest_key TEXT,
+                         status TEXT DEFAULT 'pending',
+                         completed_at REAL,
+                         claimed INTEGER DEFAULT 0,
+                         PRIMARY KEY (user_id, quest_key))''')
+
+        conn.execute('''CREATE TABLE IF NOT EXISTS user_season_pass
+                        (user_id INTEGER,
+                         season_id INTEGER,
+                         premium INTEGER DEFAULT 0,
+                         xp INTEGER DEFAULT 0,
+                         level INTEGER DEFAULT 1,
+                         claimed_free TEXT DEFAULT '[]',
+                         claimed_premium TEXT DEFAULT '[]',
+                         PRIMARY KEY (user_id, season_id))''')
+
+        conn.execute('''CREATE TABLE IF NOT EXISTS season_config
+                        (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                         season_id INTEGER,
+                         name TEXT,
+                         starts_at REAL,
+                         ends_at REAL,
+                         is_active INTEGER DEFAULT 1,
+                         premium_cost INTEGER DEFAULT 500)''')
+
+        # Начальные данные для заданий
+        quest_count = conn.execute('SELECT COUNT(*) FROM quest_templates').fetchone()[0]
+        if quest_count == 0:
+            # Ежедневные
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('daily', 'daily_plant_3', '🌱 Посадка', 'Посадить 3 любых овоща', 3, 3)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('daily', 'daily_sell_10', '💰 Продажи', 'Продать 10 овощей', 10, 5)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('daily', 'daily_upgrade_1', '⚡ Апгрейд', 'Купить 1 апгрейд', 1, 5)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('daily', 'daily_harvest_50', '📦 Сбор урожая', 'Собрать 50 овощей со склада', 50, 10)''')
+            
+            # Еженедельные
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('weekly', 'weekly_plant_20', '🌱 Массовая посадка', 'Посадить 20 овощей', 20, 20)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('weekly', 'weekly_sell_100', '💰 Крупные продажи', 'Продать 100 овощей', 100, 30)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('weekly', 'weekly_upgrade_5', '⚡ Мастер апгрейдов', 'Купить 5 апгрейдов', 5, 50)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('weekly', 'weekly_expand_1', '🌾 Расширение', 'Расширить огород', 1, 100)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('weekly', 'weekly_storage_1', '🏚️ Склад', 'Улучшить склад', 1, 75)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('weekly', 'weekly_earn_500', '💵 Доход', 'Заработать 500 Coin с огорода', 500, 100)''')
+            
+            # Достижения
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_first_plant', '🌱 Первый шаг', 'Посадить первый овощ', 1, 10)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_first_sell', '📦 Первый урожай', 'Продать 10 овощей', 10, 15)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_upgrade_10', '⚡ Мастер апгрейдов', 'Купить 10 апгрейдов', 10, 50)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_storage_5', '🏚️ Складской маг', 'Улучшить склад до 5 уровня', 5, 100)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_garden_5', '🌾 Фермер', 'Расширить огород до 5x5', 5, 150)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_all_vegs', '🌽 Коллекционер', 'Посадить все 10 видов овощей', 10, 200)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_referrals_10', '👥 Популярный', 'Пригласить 10 друзей', 10, 300)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_deposit_50', '💰 Инвестор', 'Пополнить на 50 USDT', 50, 500)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_watermelon', '🏆 Легенда', 'Купить Арбуз', 1, 1000)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('achievement', 'ach_garden_6', '⭐ Максималист', 'Расширить огород до 6x6', 6, 2000)''')
+            
+            # Социальные
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('social', 'social_tg_channel', '📱 Telegram канал', 'Подписаться на Telegram канал', 1, 20)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('social', 'social_tg_chat', '💬 Telegram чат', 'Подписаться на Telegram чат', 1, 20)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('social', 'social_discord', '🎮 Discord', 'Вступить в Discord сервер', 1, 20)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('social', 'social_youtube', '▶️ YouTube', 'Подписаться на YouTube', 1, 20)''')
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward)
+                            VALUES ('social', 'social_review', '📝 Отзыв', 'Написать отзыв о проекте', 1, 50)''')
+            
+            # Цепочка овощей
+            conn.execute('''INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward, extra_data)
+                            VALUES ('chain', 'chain_vegetables', '🌽 Цепочка овощей', 'Посади все овощи по порядку', 10, 0, 
+                            '{"steps": ["carrot", "potato", "onion", "cabbage", "tomato", "cucumber", "pepper", "eggplant", "corn", "watermelon"],
+                              "rewards": [2, 5, 10, 20, 40, 80, 150, 300, 600, 1200]}')''')
+            
+            # Сезон
+            current_time = time.time()
+            conn.execute('''INSERT INTO season_config (season_id, name, starts_at, ends_at, is_active, premium_cost)
+                            VALUES (1, 'Сезон 1', ?, ?, 1, 500)''',
+                         (current_time, current_time + 30 * 24 * 3600))
+
+        conn.commit()
 def get_db():
     db = getattr(g, '_database', None)
     if db is None:
