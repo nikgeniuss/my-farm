@@ -2153,6 +2153,192 @@ def admin_sql():
                           result=result, 
                           error=error)
 
+# ============= АДМИНКА ЗАДАНИЙ =============
+
+@app.route(f'/{ADMIN_SECRET}/quests')
+@admin_required
+def admin_quests():
+    conn = get_db()
+    quests = conn.execute('''
+        SELECT * FROM quest_templates 
+        ORDER BY 
+            CASE quest_type 
+                WHEN 'daily' THEN 1 
+                WHEN 'weekly' THEN 2 
+                WHEN 'chain' THEN 3 
+                WHEN 'achievement' THEN 4 
+                WHEN 'social' THEN 5 
+            END, 
+            id
+    ''').fetchall()
+    
+    # Статистика
+    stats = {
+        'daily': conn.execute("SELECT COUNT(*) FROM quest_templates WHERE quest_type = 'daily'").fetchone()[0],
+        'weekly': conn.execute("SELECT COUNT(*) FROM quest_templates WHERE quest_type = 'weekly'").fetchone()[0],
+        'chain': conn.execute("SELECT COUNT(*) FROM quest_templates WHERE quest_type = 'chain'").fetchone()[0],
+        'achievement': conn.execute("SELECT COUNT(*) FROM quest_templates WHERE quest_type = 'achievement'").fetchone()[0],
+        'social': conn.execute("SELECT COUNT(*) FROM quest_templates WHERE quest_type = 'social'").fetchone()[0],
+    }
+    
+    conn.close()
+    
+    return render_template('admin/quests.html', 
+                          quests=quests, 
+                          stats=stats, 
+                          admin_secret=ADMIN_SECRET)
+
+
+@app.route(f'/{ADMIN_SECRET}/quests/add', methods=['GET', 'POST'])
+@admin_required
+def admin_quest_add():
+    if request.method == 'POST':
+        quest_type = request.form.get('quest_type')
+        quest_key = request.form.get('quest_key')
+        name = request.form.get('name')
+        description = request.form.get('description')
+        target = int(request.form.get('target', 0))
+        reward = int(request.form.get('reward', 0))
+        extra_data = request.form.get('extra_data', '')
+        
+        if not all([quest_type, quest_key, name, target, reward]):
+            flash('❌ Заполните все обязательные поля', 'error')
+            return redirect(url_for('admin_quest_add'))
+        
+        conn = get_db()
+        try:
+            conn.execute('''
+                INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward, extra_data)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (quest_type, quest_key, name, description, target, reward, extra_data or None))
+            conn.commit()
+            flash('✅ Задание добавлено', 'success')
+            return redirect(url_for('admin_quests'))
+        except sqlite3.IntegrityError:
+            flash('❌ Задание с таким ключом уже существует', 'error')
+        except Exception as e:
+            flash(f'❌ Ошибка: {str(e)}', 'error')
+        finally:
+            conn.close()
+    
+    return render_template('admin/quest_add.html', admin_secret=ADMIN_SECRET)
+
+
+@app.route(f'/{ADMIN_SECRET}/quests/edit/<int:quest_id>', methods=['GET', 'POST'])
+@admin_required
+def admin_quest_edit(quest_id):
+    conn = get_db()
+    
+    if request.method == 'POST':
+        name = request.form.get('name')
+        description = request.form.get('description')
+        target = int(request.form.get('target', 0))
+        reward = int(request.form.get('reward', 0))
+        extra_data = request.form.get('extra_data', '')
+        is_active = int(request.form.get('is_active', 1))
+        
+        conn.execute('''
+            UPDATE quest_templates 
+            SET name = ?, description = ?, target = ?, reward = ?, extra_data = ?, is_active = ?
+            WHERE id = ?
+        ''', (name, description, target, reward, extra_data or None, is_active, quest_id))
+        conn.commit()
+        conn.close()
+        
+        flash('✅ Задание обновлено', 'success')
+        return redirect(url_for('admin_quests'))
+    
+    quest = conn.execute('SELECT * FROM quest_templates WHERE id = ?', (quest_id,)).fetchone()
+    conn.close()
+    
+    if not quest:
+        flash('❌ Задание не найдено', 'error')
+        return redirect(url_for('admin_quests'))
+    
+    return render_template('admin/quest_edit.html', quest=quest, admin_secret=ADMIN_SECRET)
+
+
+@app.route(f'/{ADMIN_SECRET}/quests/toggle/<int:quest_id>', methods=['POST'])
+@admin_required
+def admin_quest_toggle(quest_id):
+    conn = get_db()
+    quest = conn.execute('SELECT is_active FROM quest_templates WHERE id = ?', (quest_id,)).fetchone()
+    if quest:
+        new_status = 0 if quest['is_active'] else 1
+        conn.execute('UPDATE quest_templates SET is_active = ? WHERE id = ?', (new_status, quest_id))
+        conn.commit()
+    conn.close()
+    return redirect(url_for('admin_quests'))
+
+
+@app.route(f'/{ADMIN_SECRET}/quests/delete/<int:quest_id>', methods=['POST'])
+@admin_required
+def admin_quest_delete(quest_id):
+    conn = get_db()
+    conn.execute('DELETE FROM quest_templates WHERE id = ?', (quest_id,))
+    conn.commit()
+    conn.close()
+    flash('🗑️ Задание удалено', 'success')
+    return redirect(url_for('admin_quests'))
+
+
+@app.route(f'/{ADMIN_SECRET}/social_quests')
+@admin_required
+def admin_social_quests():
+    conn = get_db()
+    pending = conn.execute('''
+        SELECT usq.*, u.login, qt.name 
+        FROM user_social_quests usq
+        JOIN users u ON usq.user_id = u.id
+        JOIN quest_templates qt ON usq.quest_key = qt.quest_key
+        WHERE usq.status = 'pending'
+        ORDER BY usq.completed_at DESC
+    ''').fetchall()
+    conn.close()
+    
+    return render_template('admin/social_quests.html', 
+                          pending=pending, 
+                          admin_secret=ADMIN_SECRET)
+
+
+@app.route(f'/{ADMIN_SECRET}/social_quests/approve/<int:user_id>/<quest_key>', methods=['POST'])
+@admin_required
+def admin_social_approve(user_id, quest_key):
+    conn = get_db()
+    
+    # Обновляем статус
+    conn.execute('''
+        UPDATE user_social_quests 
+        SET status = 'completed', completed_at = ?, claimed = 0 
+        WHERE user_id = ? AND quest_key = ?
+    ''', (time.time(), user_id, quest_key))
+    
+    # Начисляем награду
+    template = conn.execute('SELECT reward FROM quest_templates WHERE quest_key = ?', (quest_key,)).fetchone()
+    if template:
+        conn.execute('UPDATE users SET bonus_balance = bonus_balance + ? WHERE id = ?', 
+                    (template['reward'], user_id))
+        conn.execute('UPDATE user_social_quests SET claimed = 1 WHERE user_id = ? AND quest_key = ?',
+                    (user_id, quest_key))
+    
+    conn.commit()
+    conn.close()
+    
+    flash('✅ Задание подтверждено, награда начислена', 'success')
+    return redirect(url_for('admin_social_quests'))
+
+
+@app.route(f'/{ADMIN_SECRET}/social_quests/reject/<int:user_id>/<quest_key>', methods=['POST'])
+@admin_required
+def admin_social_reject(user_id, quest_key):
+    conn = get_db()
+    conn.execute('DELETE FROM user_social_quests WHERE user_id = ? AND quest_key = ?', (user_id, quest_key))
+    conn.commit()
+    conn.close()
+    
+    flash('❌ Заявка отклонена', 'warning')
+    return redirect(url_for('admin_social_quests'))
+
 @app.errorhandler(500)
 def internal_error(error):
     try:
