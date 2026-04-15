@@ -1786,6 +1786,7 @@ def quests():
                           achievements_total=achievements_total,
                           achievements_completed=achievements_completed,
                           now=now,
+                          vegetables=VEGETABLES,
                           income_per_sec=user['income_per_sec'],
                           income_per_hour=user['income_per_hour'],
                           income_per_day=user['income_per_day'],
