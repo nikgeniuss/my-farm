@@ -1307,6 +1307,33 @@ def leaderboard():
                           income_per_day=user['income_per_day'],
                           income_per_month=user['income_per_month'])
 
+@app.route('/wallet')
+@login_required
+@check_banned
+@rate_limit(limit=30, window=60)
+def wallet():
+    user = get_user_with_stats(session['user_id'], skip_harvest=True)
+    if not user:
+        flash('❌ Ошибка загрузки данных', 'error')
+        return redirect(url_for('logout'))
+    
+    conn = get_db()
+    deposits = conn.execute('SELECT id, amount, memo, status, created_at FROM deposit_requests WHERE user_id = ? ORDER BY created_at DESC', 
+                           (session['user_id'],)).fetchall()
+    withdraws = conn.execute('SELECT id, amount, wallet_address, status, created_at FROM withdraw_requests WHERE user_id = ? ORDER BY created_at DESC',
+                            (session['user_id'],)).fetchall()
+    conn.close()
+    
+    return render_template('wallet.html',
+                          user=user,
+                          deposits=deposits,
+                          withdraws=withdraws,
+                          wallet_address=USDT_TON_WALLET,
+                          income_per_sec=user['income_per_sec'],
+                          income_per_hour=user['income_per_hour'],
+                          income_per_day=user['income_per_day'],
+                          income_per_month=user['income_per_month'])
+
 @app.route('/claim_daily_bonus', methods=['POST'])
 @login_required
 @check_banned
