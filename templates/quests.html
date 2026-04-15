@@ -139,7 +139,7 @@
         {% set extra = chain_quest.extra_data %}
         {% set steps = extra.steps %}
         {% set rewards = extra.rewards %}
-        {% set claimed = chain_progress.claimed_steps|fromjson if chain_progress else [] %}
+        {% set claimed = chain_progress.claimed_steps if chain_progress else [] %}
         <div style="display: flex; flex-direction: column; gap: 15px;">
             {% for step in range(1, 11) %}
             <div style="background: {{ '#e8f5e9' if chain_progress and chain_progress.current_step >= step else '#f5f5dc' }}; border-radius: 15px; padding: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
