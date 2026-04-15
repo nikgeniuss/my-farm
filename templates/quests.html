@@ -136,7 +136,7 @@
     <!-- Цепочка овощей -->
     <div id="content-chain" class="quest-content" style="display: none;">
         {% if chain_quest %}
-        {% set extra = chain_quest.extra_data|fromjson %}
+        {% set extra = chain_quest.extra_data %}
         {% set steps = extra.steps %}
         {% set rewards = extra.rewards %}
         {% set claimed = chain_progress.claimed_steps|fromjson if chain_progress else [] %}
