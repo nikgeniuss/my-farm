@@ -1113,7 +1113,7 @@ def login():
                 return redirect(url_for('verify_2fa'))
             session['user_id'] = user['id']
             session['is_admin'] = bool(user['is_admin'])
-            audit_log(user['id'], 'login_success', ip_address=request.remote_addr)
+            audit_log(user['id'], 'login_success')
             flash('✅ Добро пожаловать!', 'success')
             return redirect(url_for('index'))
         elif action == 'register':
