@@ -1278,6 +1278,7 @@ def logout():
 def plant(cell_id):
     crop_key = request.form.get('crop')
     if not crop_key or crop_key not in VEGETABLES:
+        audit_log(session['user_id'], 'plant_crop', 'garden', cell_id, None, {'crop': crop_key, 'cost': crop_cost})
         flash('❌ Ошибка выбора овоща', 'error')
         return redirect(url_for('index'))
 
@@ -1323,6 +1324,7 @@ def plant(cell_id):
 def upgrade(cell_id):
     upgrade_key = request.form.get('upgrade')
     if not upgrade_key or upgrade_key not in UPGRADES:
+        audit_log(session['user_id'], 'buy_upgrade', 'garden', cell_id, None, {'upgrade': upgrade_key, 'cost': upgrade_cost})
         flash('❌ Ошибка выбора апгрейда', 'error')
         return redirect(url_for('index'))
     harvest_crops(session['user_id'])
@@ -1379,6 +1381,7 @@ def expand_garden():
     expand_costs = {3: 2100, 4: 4500, 5: 9900}
     if current_size >= 6:
         flash('🎉 Максимальный размер огорода!', 'warning')
+        audit_log(session['user_id'], 'expand_garden', 'users', session['user_id'], {'grid_size': current_size}, {'grid_size': new_size})
         return redirect(url_for('index'))
     new_size = current_size + 1
     expand_cost = expand_costs[current_size]
@@ -1432,6 +1435,7 @@ def storage():
 def sell_crop(crop):
     if crop not in VEGETABLES:
         flash('❌ Неизвестная культура', 'error')
+        audit_log(session['user_id'], 'sell_crop', 'storage', None, None, {'crop': crop, 'quantity': quantity, 'earned': total_earned})
         return redirect(url_for('storage'))
     
     quantity = float(request.form.get('quantity', 0))
@@ -1545,6 +1549,7 @@ def upgrade_storage():
         flash(f'🏚️ Склад улучшен до {current_level + 1} уровня! Вместимость: {new_capacity:.0f} шт. -{upgrade_cost} Coin', 'success')
     else:
         flash(f'❌ Недостаточно средств! Нужно {upgrade_cost} Coin', 'error')
+        audit_log(session['user_id'], 'upgrade_storage', 'users', session['user_id'], {'storage_level': current_level}, {'storage_level': current_level + 1})
     return redirect(url_for('storage'))
 
 @app.route('/referrals')
