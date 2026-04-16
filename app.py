@@ -1336,9 +1336,9 @@ def plant(cell_id):
 def upgrade(cell_id):
     upgrade_key = request.form.get('upgrade')
     if not upgrade_key or upgrade_key not in UPGRADES:
-        audit_log(session['user_id'], 'buy_upgrade', 'garden', cell_id, None, {'upgrade': upgrade_key, 'cost': upgrade_cost})
         flash('❌ Ошибка выбора апгрейда', 'error')
         return redirect(url_for('index'))
+    
     harvest_crops(session['user_id'])
     conn = get_db()
     cell = conn.execute('SELECT crop, upgrades_json FROM garden WHERE user_id = ? AND cell_id = ?',
@@ -1346,10 +1346,12 @@ def upgrade(cell_id):
     if not cell or not cell['crop']:
         flash('❌ На участке ничего не посажено', 'error')
         return redirect(url_for('index'))
+    
     upgrades = json.loads(cell['upgrades_json']) if cell['upgrades_json'] else {}
     if upgrade_key in upgrades:
         flash(f'⚠️ Апгрейд уже куплен', 'warning')
         return redirect(url_for('index'))
+    
     upgrade_cost = get_upgrade_price(cell['crop'], upgrade_key)
     upgrade_name = UPGRADES[upgrade_key]['name']
     upgrade_multiplier = UPGRADES[upgrade_key]['multiplier']
@@ -1374,11 +1376,15 @@ def upgrade(cell_id):
         update_quest_progress(session['user_id'], 'daily', 'upgrade', 1)
         update_quest_progress(session['user_id'], 'weekly', 'upgrade', 1)
         update_quest_progress(session['user_id'], 'achievement', 'upgrade', 1)
-        add_season_xp(session['user_id'], 20)  # +20 XP за апгрейд
+        add_season_xp(session['user_id'], 20)
         log_activity(upgrade_user_login, 'upgrade', f'⚡ {upgrade_user_login} купил апгрейд {upgrade_name}')
+        
+        audit_log(session['user_id'], 'buy_upgrade', 'garden', cell_id, None, {'upgrade': upgrade_key, 'cost': upgrade_cost})
+        
         flash(f'✨ {upgrade_name} куплен! +{upgrade_multiplier*100:.0f}%! -{upgrade_cost} Coin', 'success')
     else:
         flash(f'❌ Недостаточно средств! Нужно {upgrade_cost} Coin', 'error')
+    
     return redirect(url_for('index'))
 
 @app.route('/expand_garden', methods=['POST'])
