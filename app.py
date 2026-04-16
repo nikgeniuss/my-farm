@@ -1177,10 +1177,10 @@ def login():
             hashed_password = hash_password(password)
             
             cursor = conn.execute('''INSERT INTO users 
-                (login, password, balance, grid_size, storage_level, referrer_id, created_at, is_admin,
+                (login, password, grid_size, storage_level, referrer_id, created_at, is_admin,
                  register_ip, register_ua, device_hash, bonus_balance, farm_balance, referrer_ip, referrer_ua) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                (login, hashed_password, 100, 3, 1, referrer_id, current_time, 0,
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                (login, hashed_password, 3, 1, referrer_id, current_time, 0,
                  register_ip, register_ua, device_hash, 100, 0, referrer_ip, referrer_ua))
             user_id = cursor.lastrowid
             
