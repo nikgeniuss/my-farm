@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; max-width: 600px; margin: 0 auto;">
+<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px; max-width: 700px; margin: 0 auto;">
     <h2 style="color: #2e7d32; margin-bottom: 20px;">➕ Добавить задание</h2>
     
     <form method="post">
@@ -45,14 +45,15 @@
         <!-- Поля для социальных заданий -->
         <div id="social_fields" style="display: none;">
             <div style="margin-bottom: 15px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔗 Ссылка для проверки:</label>
+                <label style="display: block; margin-bottom: 5px; font-weight: bold;">🔗 Ссылка для выполнения:</label>
                 <input type="text" name="verify_url" id="verify_url" placeholder="https://t.me/..." style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                <small style="color: #666;">Ссылка, куда перейдёт пользователь при нажатии "Выполнить"</small>
             </div>
             
             <div style="margin-bottom: 15px;">
                 <label style="display: block; margin-bottom: 5px; font-weight: bold;">💬 Подсказка для пользователя:</label>
-                <input type="text" name="input_hint" id="input_hint" placeholder="Ваш ник в Telegram" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                <small style="color: #666;">Что нужно ввести пользователю для проверки (ник, ссылка на профиль и т.д.)</small>
+                <input type="text" name="input_hint" id="input_hint" placeholder="Например: Ваш ник в Telegram" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
+                <small style="color: #666;">Что нужно ввести пользователю для проверки</small>
             </div>
         </div>
         
