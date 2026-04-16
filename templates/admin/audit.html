@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block content %}
+<div style="background: rgba(255,255,255,0.95); border-radius: 20px; padding: 30px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="color: #2e7d32;">📋 Аудит действий</h2>
+        <a href="/{{ admin_secret }}/dashboard" style="background: #667eea; color: white; padding: 8px 16px; border-radius: 10px; text-decoration: none;">← Назад</a>
+    </div>
+    
+    <!-- Статистика -->
+    <div style="background: #e8f5e9; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+        📊 Всего записей в логах: <strong>{{ total_logs }}</strong>
+    </div>
+    
+    <!-- Фильтры -->
+    <form method="get" style="background: #f5f5f5; border-radius: 15px; padding: 20px; margin-bottom: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #666;">👤 Пользователь:</label>
+                <input type="text" name="user" value="{{ user_filter }}" placeholder="Логин или часть" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #666;">⚡ Действие:</label>
+                <select name="action" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+                    <option value="">Все действия</option>
+                    {% for act in actions %}
+                    <option value="{{ act.action }}" {% if action_filter == act.action %}selected{% endif %}>{{ act.action }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #666;">📅 С даты:</label>
+                <input type="date" name="date_from" value="{{ date_from }}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #666;">📅 По дату:</label>
+                <input type="date" name="date_to" value="{{ date_to }}" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+            
+            <div>
+                <label style="display: block; margin-bottom: 5px; font-size: 12px; color: #666;">🔢 Лимит записей:</label>
+                <input type="number" name="limit" value="{{ limit }}" min="10" max="10000" 
+                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px;">
+            </div>
+        </div>
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button type="submit" style="background: #2196f3; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+                🔍 Применить фильтры
+            </button>
+            <a href="/{{ admin_secret }}/audit" style="background: #999; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none;">
+                🗑️ Сбросить
+            </a>
+        </div>
+    </form>
+    
+    <!-- Таблица -->
+    <div style="overflow-x: auto; max-height: 600px; overflow-y: auto; border-radius: 10px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <thead>
+                <tr style="background: #2e7d32; color: white; position: sticky; top: 0;">
+                    <th style="padding: 10px;">ID</th>
+                    <th style="padding: 10px;">Время</th>
+                    <th style="padding: 10px;">Пользователь</th>
+                    <th style="padding: 10px;">Действие</th>
+                    <th style="padding: 10px;">Таблица</th>
+                    <th style="padding: 10px;">Record ID</th>
+                    <th style="padding: 10px;">IP</th>
+                    <th style="padding: 10px;">Детали</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr style="border-bottom: 1px solid #ddd; {% if log.action == 'login_success' %}background: #e8f5e9;{% elif log.action == 'logout' %}background: #fff3e0;{% elif 'create' in log.action %}background: #e3f2fd;{% endif %}">
+                    <td style="padding: 8px;">#{{ log.id }}</td>
+                    <td style="padding: 8px; white-space: nowrap;">{{ log.created_at|timestamp_to_datetime }}</td>
+                    <td style="padding: 8px; font-weight: bold;">{{ log.user_login }}</td>
+                    <td style="padding: 8px;">
+                        {% if log.action == 'login_success' %}
+                            <span style="background: #4caf50; color: white; padding: 3px 10px; border-radius: 20px;">🔐 Вход</span>
+                        {% elif log.action == 'logout' %}
+                            <span style="background: #ff9800; color: white; padding: 3px 10px; border-radius: 20px;">🚪 Выход</span>
+                        {% elif log.action == 'register' %}
+                            <span style="background: #9c27b0; color: white; padding: 3px 10px; border-radius: 20px;">✨ Регистрация</span>
+                        {% elif log.action == 'create_deposit' %}
+                            <span style="background: #00bcd4; color: white; padding: 3px 10px; border-radius: 20px;">💳 Депозит</span>
+                        {% elif log.action == 'create_withdraw' %}
+                            <span style="background: #f44336; color: white; padding: 3px 10px; border-radius: 20px;">💸 Вывод</span>
+                        {% else %}
+                            <span style="background: #607d8b; color: white; padding: 3px 10px; border-radius: 20px;">{{ log.action }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px;">{{ log.table_name or '—' }}</td>
+                    <td style="padding: 8px;">{{ log.record_id or '—' }}</td>
+                    <td style="padding: 8px; font-family: monospace; font-size: 11px;">{{ log.ip_address or '—' }}</td>
+                    <td style="padding: 8px;">
+                        {% if log.new_values %}
+                        <button onclick="showDetails(this)" data-details="{{ log.new_values }}" style="background: #2196f3; color: white; border: none; padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 11px;">
+                            🔍 Показать
+                        </button>
+                        {% else %}
+                        <span style="color: #999;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div style="margin-top: 10px; color: #666; font-size: 12px;">
+        Показано записей: {{ logs|length }}
+    </div>
+</div>
+
+<script>
+function showDetails(btn) {
+    const details = btn.getAttribute('data-details');
+    try {
+        const obj = JSON.parse(details);
+        const formatted = JSON.stringify(obj, null, 2);
+        alert(formatted);
+    } catch(e) {
+        alert(details);
+    }
+}
+</script>
+{% endblock %}
