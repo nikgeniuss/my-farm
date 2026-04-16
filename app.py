@@ -1043,7 +1043,6 @@ def index():
         flash('❌ Ошибка загрузки данных', 'error')
         return redirect(url_for('logout'))
 
-    audit_log(session['user_id'], 'test_action')
 
     bonus_info = get_daily_bonus_info(session['user_id'])
 
