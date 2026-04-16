@@ -1204,6 +1204,7 @@ def login():
             conn.commit()
             session['user_id'] = user_id
             session['is_admin'] = 0
+            audit_log(user_id, 'register', 'users', user_id, None, {'login': login})
             return redirect(url_for('index'))
     referrer_id = request.args.get('ref')
     return render_template('login.html', referrer_id=referrer_id)
