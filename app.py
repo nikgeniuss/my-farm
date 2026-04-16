@@ -430,6 +430,26 @@ def log_activity(login, event_type, message):
     except Exception as e:
         print(f"log_activity error: {e}")
 
+def audit_log(user_id, action, table_name=None, record_id=None, old_values=None, new_values=None):
+    try:
+        conn = get_db()
+        user = conn.execute('SELECT login FROM users WHERE id = ?', (user_id,)).fetchone() if user_id else None
+        user_login = user['login'] if user else 'system'
+        
+        conn.execute('''INSERT INTO audit_log 
+                        (user_id, user_login, action, table_name, record_id, 
+                         old_values, new_values, ip_address, user_agent, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                     (user_id, user_login, action, table_name, record_id,
+                      json.dumps(old_values) if old_values else None,
+                      json.dumps(new_values) if new_values else None,
+                      request.remote_addr if request else None,
+                      request.headers.get('User-Agent', '') if request else None,
+                      time.time()))
+        conn.commit()
+    except Exception as e:
+        print(f"Audit log error: {e}")
+
 def calculate_income(crop_key, upgrades):
     base_income = VEGETABLES[crop_key]['income']
     multiplier = 1 + sum(upgrades.values())
@@ -1022,6 +1042,8 @@ def index():
     if not user:
         flash('❌ Ошибка загрузки данных', 'error')
         return redirect(url_for('logout'))
+
+    audit_log(session['user_id'], 'test_action')
 
     bonus_info = get_daily_bonus_info(session['user_id'])
 
