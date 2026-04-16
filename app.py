@@ -393,6 +393,19 @@ def init_db():
                             VALUES (1, 'Сезон 1', ?, ?, 1, 500)''',
                          (current_time, current_time + 30 * 24 * 3600))
 
+            conn.execute('''CREATE TABLE IF NOT EXISTS audit_log
+                (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                 user_id INTEGER,
+                 user_login TEXT,
+                 action TEXT,
+                 table_name TEXT,
+                 record_id INTEGER,
+                 old_values TEXT,
+                 new_values TEXT,
+                 ip_address TEXT,
+                 user_agent TEXT,
+                 created_at REAL)''')
+
         conn.commit()
 def get_db():
     db = getattr(g, '_database', None)
