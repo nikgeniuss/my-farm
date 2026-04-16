@@ -6,7 +6,7 @@
         
         <div style="background: linear-gradient(135deg, #ff9800, #f57c00); border-radius: 15px; padding: 20px; color: white; margin-bottom: 30px;">
             <h3>Доступно для вывода:</h3>
-            <p style="font-size: 36px; font-weight: bold;">{{ "%.2f"|format(user.balance) }} Coin</p>
+            <p style="font-size: 36px; font-weight: bold;">{{ "%.2f"|format(user.farm_balance) }} Coin</p>
             <p style="font-size: 12px;">Минимальная сумма вывода: 10 Coin (0.1 USDT)</p>
         </div>
         
@@ -58,7 +58,7 @@
                 
                 <div class="input-group" style="margin-bottom: 15px;">
                     <label style="display: block; margin-bottom: 5px; font-weight: bold;">Сумма вывода (Coin):</label>
-                    <input type="number" name="amount" id="withdrawAmount" min="10" max="{{ user.balance|int }}" 
+                    <input type="number" name="amount" id="withdrawAmount" min="10" max="{{ user.farm_balance|int }}" 
                            step="1" required oninput="calculateAmounts()"
                            style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px;">
                     <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 8px;">
