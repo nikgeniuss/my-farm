@@ -532,8 +532,7 @@ def get_user_with_stats(user_id, skip_harvest=False):
         conn = get_db()
         user = conn.execute('''
             SELECT 
-                login, 
-                balance, 
+                login,  
                 grid_size, 
                 storage_level, 
                 bonus_balance, 
