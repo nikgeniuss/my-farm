@@ -225,6 +225,14 @@ def init_db():
             conn.execute("ALTER TABLE users ADD COLUMN is_banned INTEGER DEFAULT 0")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE quest_templates ADD COLUMN verify_url TEXT")
+        except:
+            pass
+        try:
+    conn.execute("ALTER TABLE quest_templates ADD COLUMN input_hint TEXT")
+except:
+    pass
 
         conn.execute('''CREATE TABLE IF NOT EXISTS activity_log
                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
