@@ -1266,6 +1266,7 @@ def profile():
 
 @app.route('/logout')
 def logout():
+    audit_log(session.get('user_id'), 'logout')
     session.clear()
     flash('👋 До свидания!', 'info')
     return redirect(url_for('login'))
