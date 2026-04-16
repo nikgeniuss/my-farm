@@ -233,6 +233,10 @@ def init_db():
             conn.execute("ALTER TABLE quest_templates ADD COLUMN input_hint TEXT")
         except:
             pass
+        try:
+            conn.execute("ALTER TABLE user_social_quests ADD COLUMN user_input TEXT")
+        except:
+            pass
 
         conn.execute('''CREATE TABLE IF NOT EXISTS activity_log
                         (id INTEGER PRIMARY KEY AUTOINCREMENT,
