@@ -2045,17 +2045,30 @@ def buy_premium_pass():
 def check_social_quest():
     data = request.get_json()
     quest_key = data.get('quest_key')
+    user_input = data.get('user_input', '')
+    
+    if not quest_key:
+        return jsonify({'success': False, 'error': 'Задание не указано'})
     
     conn = get_db()
     user_id = session['user_id']
     
-    # Здесь должна быть реальная проверка через API соцсетей
-    # Пока просто помечаем как ожидающее подтверждения
+    # Проверяем, не отправлял ли уже
+    existing = conn.execute('''
+        SELECT * FROM user_social_quests 
+        WHERE user_id = ? AND quest_key = ?
+    ''', (user_id, quest_key)).fetchone()
+    
+    if existing:
+        return jsonify({'success': False, 'error': 'Заявка уже отправлена'})
+    
+    # Сохраняем заявку
     conn.execute('''
-        INSERT OR REPLACE INTO user_social_quests (user_id, quest_key, status)
-        VALUES (?, ?, 'pending')
-    ''', (user_id, quest_key))
+        INSERT INTO user_social_quests (user_id, quest_key, status, user_input, completed_at)
+        VALUES (?, ?, 'pending', ?, ?)
+    ''', (user_id, quest_key, user_input, time.time()))
     conn.commit()
+    conn.close()
     
     return jsonify({'success': True, 'message': 'Заявка отправлена на проверку'})
 
