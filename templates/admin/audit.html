@@ -10,6 +10,26 @@
     <div style="background: #e8f5e9; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
         📊 Всего записей в логах: <strong>{{ total_logs }}</strong>
     </div>
+
+    <!-- Очистка старых логов -->
+<div style="background: #ffebee; border-radius: 10px; padding: 15px; margin-bottom: 20px;">
+    <form method="post" action="/{{ admin_secret }}/audit/cleanup" style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <span style="color: #c62828;">🗑️ Удалить записи старше</span>
+        <select name="days" style="padding: 8px; border-radius: 8px; border: 1px solid #ddd;">
+            <option value="7">7 дней</option>
+            <option value="30" selected>30 дней</option>
+            <option value="60">60 дней</option>
+            <option value="90">90 дней</option>
+            <option value="180">180 дней</option>
+        </select>
+        <input type="text" name="action" placeholder="Действие (опционально)" style="padding: 8px; border-radius: 8px; border: 1px solid #ddd; width: 200px;">
+        <button type="submit" onclick="return confirm('Удалить старые логи? Это действие нельзя отменить!')" style="background: #f44336; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: bold;">
+            🗑️ Удалить
+        </button>
+    </form>
+    <p style="font-size: 11px; color: #999; margin-top: 5px;">⚠️ Удаление необратимо. Можно указать конкретное действие для удаления.</p>
+</div>
     
     <!-- Фильтры -->
     <form method="get" style="background: #f5f5f5; border-radius: 15px; padding: 20px; margin-bottom: 20px;">
