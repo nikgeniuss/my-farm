@@ -2685,6 +2685,8 @@ def admin_quest_add():
         target = int(request.form.get('target', 0))
         reward = int(request.form.get('reward', 0))
         extra_data = request.form.get('extra_data', '')
+        verify_url = request.form.get('verify_url', '')      # НОВОЕ
+        input_hint = request.form.get('input_hint', '')      # НОВОЕ
         
         if not all([quest_type, quest_key, name, target, reward]):
             flash('❌ Заполните все обязательные поля', 'error')
@@ -2693,9 +2695,9 @@ def admin_quest_add():
         conn = get_db()
         try:
             conn.execute('''
-                INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward, extra_data)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (quest_type, quest_key, name, description, target, reward, extra_data or None))
+                INSERT INTO quest_templates (quest_type, quest_key, name, description, target, reward, extra_data, verify_url, input_hint)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (quest_type, quest_key, name, description, target, reward, extra_data or None, verify_url or None, input_hint or None))
             conn.commit()
             flash('✅ Задание добавлено', 'success')
             return redirect(url_for('admin_quests'))
@@ -2723,11 +2725,11 @@ def admin_quest_edit(quest_id):
         is_active = int(request.form.get('is_active', 1))
         
         conn.execute('''
-            UPDATE quest_templates 
-            SET name = ?, description = ?, target = ?, reward = ?, extra_data = ?, is_active = ?
-            WHERE id = ?
-        ''', (name, description, target, reward, extra_data or None, is_active, quest_id))
-        conn.commit()
+    UPDATE quest_templates 
+    SET name = ?, description = ?, target = ?, reward = ?, extra_data = ?, is_active = ?, verify_url = ?, input_hint = ?
+    WHERE id = ?
+''', (name, description, target, reward, extra_data or None, is_active, verify_url or None, input_hint or None, quest_id))
+conn.commit()
         conn.close()
         
         flash('✅ Задание обновлено', 'success')
