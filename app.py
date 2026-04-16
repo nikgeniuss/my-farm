@@ -2722,14 +2722,14 @@ def admin_quest_edit(quest_id):
         target = int(request.form.get('target', 0))
         reward = int(request.form.get('reward', 0))
         extra_data = request.form.get('extra_data', '')
-        is_active = int(request.form.get('is_active', 1))
+                is_active = int(request.form.get('is_active', 1))
         
         conn.execute('''
-    UPDATE quest_templates 
-    SET name = ?, description = ?, target = ?, reward = ?, extra_data = ?, is_active = ?, verify_url = ?, input_hint = ?
-    WHERE id = ?
-''', (name, description, target, reward, extra_data or None, is_active, verify_url or None, input_hint or None, quest_id))
-conn.commit()
+            UPDATE quest_templates 
+            SET name = ?, description = ?, target = ?, reward = ?, extra_data = ?, is_active = ?, verify_url = ?, input_hint = ?
+            WHERE id = ?
+        ''', (name, description, target, reward, extra_data or None, is_active, verify_url or None, input_hint or None, quest_id))
+        conn.commit()
         conn.close()
         
         flash('✅ Задание обновлено', 'success')
