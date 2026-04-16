@@ -2609,6 +2609,27 @@ def admin_audit():
                           date_to=date_to,
                           admin_secret=ADMIN_SECRET)
 
+@app.route(f'/{ADMIN_SECRET}/audit/cleanup', methods=['POST'])
+@admin_required
+def admin_audit_cleanup():
+    days = request.form.get('days', 30, type=int)
+    action = request.form.get('action', '').strip()
+    
+    conn = get_db()
+    cutoff = time.time() - (days * 86400)
+    
+    if action:
+        result = conn.execute('DELETE FROM audit_log WHERE created_at < ? AND action = ?',
+                             (cutoff, action))
+    else:
+        result = conn.execute('DELETE FROM audit_log WHERE created_at < ?', (cutoff,))
+    
+    conn.commit()
+    deleted = result.rowcount
+    
+    flash(f'🗑️ Удалено {deleted} записей старше {days} дней', 'success')
+    return redirect(url_for('admin_audit'))
+
 # ============= АДМИНКА ЗАДАНИЙ =============
 
 @app.route(f'/{ADMIN_SECRET}/quests')
