@@ -1648,14 +1648,15 @@ def create_withdraw():
     
     conn = get_db()
     conn.execute('UPDATE users SET farm_balance = farm_balance - ? WHERE id = ?', (amount, session['user_id']))
-    conn.execute('INSERT INTO withdraw_requests (user_id, amount, wallet_address, created_at, status) VALUES (?, ?, ?, ?, "pending")',
+    cursor = conn.execute('INSERT INTO withdraw_requests (user_id, amount, wallet_address, created_at, status) VALUES (?, ?, ?, ?, "pending")',
                  (session['user_id'], amount, wallet, time.time()))
+    withdraw_id = cursor.lastrowid
     conn.commit()
     wd_login = conn.execute('SELECT login FROM users WHERE id = ?', (session['user_id'],)).fetchone()['login']
     log_activity(wd_login, 'withdraw', f'💸 {wd_login} вывел {int(amount)} Coin')
+    audit_log(session['user_id'], 'create_withdraw', 'withdraw_requests', withdraw_id, None, {'amount': amount, 'wallet': wallet})
     flash(f'✅ Заявка на вывод {amount} Coin создана! Администратор обработает её в ближайшее время.', 'success')
     return redirect(url_for('withdraw'))
-
 @app.route('/about')
 @login_required
 @check_banned
