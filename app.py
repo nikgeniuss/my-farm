@@ -608,10 +608,10 @@ def get_user_with_stats(user_id, skip_harvest=False):
 
 def get_referrals(user_id):
     conn = get_db()
-    referrals = conn.execute('SELECT id, login, balance, created_at FROM users WHERE referrer_id = ? ORDER BY id DESC', (user_id,)).fetchall()
+    referrals = conn.execute('SELECT id, login, farm_balance, created_at FROM users WHERE referrer_id = ? ORDER BY id DESC', (user_id,)).fetchall()
     referrals_list = []
     for ref in referrals:
-        referrals_list.append({'id': ref['id'], 'login': ref['login'], 'balance': ref['balance'], 'created_at': ref['created_at'] or time.time()})
+        referrals_list.append({'id': ref['id'], 'login': ref['login'], 'balance': ref['farm_balance'], 'created_at': ref['created_at'] or time.time()})
     history = conn.execute('SELECT referred_id, bonus_amount, created_at FROM referral_history WHERE referrer_id = ? ORDER BY created_at DESC', (user_id,)).fetchall()
     history_list = []
     for h in history:
