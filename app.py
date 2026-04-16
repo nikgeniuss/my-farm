@@ -2722,7 +2722,9 @@ def admin_quest_edit(quest_id):
         target = int(request.form.get('target', 0))
         reward = int(request.form.get('reward', 0))
         extra_data = request.form.get('extra_data', '')
-                is_active = int(request.form.get('is_active', 1))
+        is_active = int(request.form.get('is_active', 1))
+        verify_url = request.form.get('verify_url', '')
+        input_hint = request.form.get('input_hint', '')
         
         conn.execute('''
             UPDATE quest_templates 
