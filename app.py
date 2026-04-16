@@ -1594,11 +1594,13 @@ def create_deposit():
     while existing:
         memo = generate_memo()
         existing = conn.execute('SELECT id FROM deposit_requests WHERE memo = ?', (memo,)).fetchone()
-    conn.execute('INSERT INTO deposit_requests (user_id, amount, memo, created_at, status) VALUES (?, ?, ?, ?, "pending")',
+    cursor = conn.execute('INSERT INTO deposit_requests (user_id, amount, memo, created_at, status) VALUES (?, ?, ?, ?, "pending")',
                  (session['user_id'], amount, memo, current_time))
+    deposit_id = cursor.lastrowid
     conn.commit()
     dep_login = conn.execute('SELECT login FROM users WHERE id = ?', (session['user_id'],)).fetchone()['login']
     log_activity(dep_login, 'deposit', f'💎 {dep_login} пополнил баланс на {amount} USDT')
+    audit_log(session['user_id'], 'create_deposit', 'deposit_requests', deposit_id, None, {'amount': amount, 'memo': memo})
     flash(f'✅ Заявка на {amount} USDT создана! Мемо: {memo}', 'success')
     return redirect(url_for('deposit'))
 
