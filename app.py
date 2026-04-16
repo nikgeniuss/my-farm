@@ -2543,6 +2543,68 @@ def admin_sql():
                           result=result, 
                           error=error)
 
+@app.route(f'/{ADMIN_SECRET}/audit')
+@admin_required
+def admin_audit():
+    # Параметры фильтрации
+    limit = request.args.get('limit', 100, type=int)
+    user_filter = request.args.get('user', '').strip()
+    action_filter = request.args.get('action', '').strip()
+    date_from = request.args.get('date_from', '').strip()
+    date_to = request.args.get('date_to', '').strip()
+    
+    conn = get_db()
+    
+    # Базовый запрос
+    query = 'SELECT * FROM audit_log WHERE 1=1'
+    params = []
+    
+    if user_filter:
+        query += ' AND user_login LIKE ?'
+        params.append(f'%{user_filter}%')
+    
+    if action_filter:
+        query += ' AND action LIKE ?'
+        params.append(f'%{action_filter}%')
+    
+    if date_from:
+        try:
+            ts_from = datetime.strptime(date_from, '%Y-%m-%d').timestamp()
+            query += ' AND created_at >= ?'
+            params.append(ts_from)
+        except:
+            pass
+    
+    if date_to:
+        try:
+            ts_to = datetime.strptime(date_to, '%Y-%m-%dT%H:%M') if 'T' in date_to else datetime.strptime(date_to + ' 23:59:59', '%Y-%m-%d %H:%M:%S').timestamp()
+            query += ' AND created_at <= ?'
+            params.append(ts_to)
+        except:
+            pass
+    
+    query += ' ORDER BY id DESC LIMIT ?'
+    params.append(limit)
+    
+    logs = conn.execute(query, params).fetchall()
+    
+    # Статистика
+    total_logs = conn.execute('SELECT COUNT(*) FROM audit_log').fetchone()[0]
+    
+    # Уникальные действия для выпадающего списка
+    actions = conn.execute('SELECT DISTINCT action FROM audit_log ORDER BY action').fetchall()
+    
+    return render_template('admin/audit.html',
+                          logs=logs,
+                          total_logs=total_logs,
+                          actions=actions,
+                          limit=limit,
+                          user_filter=user_filter,
+                          action_filter=action_filter,
+                          date_from=date_from,
+                          date_to=date_to,
+                          admin_secret=ADMIN_SECRET)
+
 # ============= АДМИНКА ЗАДАНИЙ =============
 
 @app.route(f'/{ADMIN_SECRET}/quests')
