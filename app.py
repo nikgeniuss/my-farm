@@ -236,7 +236,6 @@ def init_db():
         conn.execute('UPDATE users SET grid_size = 3 WHERE grid_size IS NULL')
         conn.execute('UPDATE users SET storage_level = 1 WHERE storage_level IS NULL')
         
-        conn.execute("UPDATE users SET farm_balance = balance WHERE farm_balance = 0 AND balance > 0")
         conn.execute("UPDATE users SET bonus_balance = 0 WHERE bonus_balance IS NULL")
 
         admin_count = conn.execute('SELECT COUNT(*) as count FROM users WHERE is_admin = 1').fetchone()[0]
