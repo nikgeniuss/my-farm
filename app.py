@@ -653,6 +653,7 @@ def add_season_xp(user_id, xp_amount):
     if not season:
         return
     
+    conn = get_db()
     sp = get_user_season_pass(user_id, season['season_id'])
     new_xp = sp['xp'] + xp_amount
     current_level = sp['level']
@@ -665,7 +666,6 @@ def add_season_xp(user_id, xp_amount):
         else:
             break
     
-    conn = get_db()
     conn.execute('UPDATE user_season_pass SET xp = ?, level = ? WHERE user_id = ? AND season_id = ?',
                  (new_xp, current_level, user_id, season['season_id']))
     conn.commit()
