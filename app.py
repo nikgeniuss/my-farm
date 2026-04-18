@@ -750,7 +750,6 @@ def update_chain_quest(user_id, crop_key):
     ''').fetchone()
     
     if not chain:
-        conn.close()
         return
     
     chain = dict(chain)
