@@ -622,11 +622,13 @@ def get_referrals(user_id):
 # ============= ФУНКЦИИ ДЛЯ ЗАДАНИЙ =============
 
 def get_active_season():
-    conn = get_db()
+    conn = sqlite3.connect(DB_PATH, timeout=20)
+    conn.row_factory = sqlite3.Row
     now = time.time()
     season = conn.execute('''SELECT * FROM season_config 
                              WHERE is_active = 1 AND starts_at <= ? AND ends_at >= ?''',
                           (now, now)).fetchone()
+    conn.close()
     return dict(season) if season else None
 
 def get_user_season_pass(user_id, season_id):
@@ -653,8 +655,21 @@ def add_season_xp(user_id, xp_amount):
     if not season:
         return
     
-    conn = get_db()
-    sp = get_user_season_pass(user_id, season['season_id'])
+    conn = sqlite3.connect(DB_PATH, timeout=20)
+    conn.row_factory = sqlite3.Row
+    
+    # Получаем сезонный пропуск пользователя
+    sp = conn.execute('SELECT * FROM user_season_pass WHERE user_id = ? AND season_id = ?',
+                      (user_id, season['season_id'])).fetchone()
+    
+    if not sp:
+        conn.execute('''INSERT INTO user_season_pass (user_id, season_id, xp, level) 
+                        VALUES (?, ?, 0, 1)''', (user_id, season['season_id']))
+        conn.commit()
+        sp = conn.execute('SELECT * FROM user_season_pass WHERE user_id = ? AND season_id = ?',
+                          (user_id, season['season_id'])).fetchone()
+    
+    sp = dict(sp)
     new_xp = sp['xp'] + xp_amount
     current_level = sp['level']
     
@@ -669,9 +684,9 @@ def add_season_xp(user_id, xp_amount):
     conn.execute('UPDATE user_season_pass SET xp = ?, level = ? WHERE user_id = ? AND season_id = ?',
                  (new_xp, current_level, user_id, season['season_id']))
     conn.commit()
+    conn.close()
     
     return current_level
-
 def update_quest_progress(user_id, quest_type, action, value=1):
     conn = get_db()
     now = time.time()
