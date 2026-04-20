@@ -1825,6 +1825,14 @@ def quests():
             chain_progress = conn.execute('''
                 SELECT * FROM user_chain_quests WHERE user_id = ? AND chain_key = ?
             ''', (session['user_id'], chain_quest['quest_key'])).fetchone()
+
+        # Преобразуем claimed_steps из JSON в список
+        if chain_progress:
+            chain_progress = dict(chain_progress)
+            if chain_progress['claimed_steps']:
+                chain_progress['claimed_steps'] = json.loads(chain_progress['claimed_steps'])
+            else:
+                chain_progress['claimed_steps'] = []
     
     # Социальные задания
     social_quests = conn.execute('''
